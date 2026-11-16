@@ -152,8 +152,9 @@ flowchart TD
 
 `build.ts` bundles `src/main.ts` with `Bun.build`, then substitutes the resulting
 JavaScript and `src/styles.css` into the `/*__CSS__*/` and `/*__JS__*/` placeholders in
-`src/index.html`. Closing `</script>` sequences are escaped so the inline bundle can
-never terminate its own tag.
+`src/index.html`. The favicon (`src/favicon.svg`) is inlined as a `data:` URI, so the page
+never requests a separate icon file. Closing `</script>` sequences are escaped so the
+inline bundle can never terminate its own tag.
 
 Mermaid's official UMD build is inlined separately through the `/*__MERMAID__*/`
 placeholder, *after* the app script. Two reasons: bundling Mermaid's ESM build with Bun
@@ -170,6 +171,7 @@ Mermaid dominates the output size:
 ```
 src/
   index.html   layout + inline theme bootstrap
+  favicon.svg  app icon, inlined by build.ts as a data URI
   styles.css   design tokens (light/dark) + all UI styles
   main.ts      editor, list, folders, preview modes, search, trash, shortcuts
   markdown.ts  dependency-free Markdown renderer with highlighting

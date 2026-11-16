@@ -19,6 +19,7 @@ const PORT = Number(process.env.PORT ?? 4173);
 const OUT_DIR = `${ROOT}/dist`;
 const OUT_FILE = `${OUT_DIR}/index.html`;
 const MERMAID_FILE = `${ROOT}/node_modules/mermaid/dist/mermaid.min.js`;
+const FAVICON_FILE = `${ROOT}/src/favicon.svg`;
 
 function escapeClosingTag(code: string, tag: string): string {
   return code.replace(new RegExp(`</${tag}`, "gi"), `<\\/${tag}`);
@@ -59,7 +60,11 @@ async function bundle(mermaid: string): Promise<string> {
   const css = escapeClosingTag(await Bun.file(`${ROOT}/src/styles.css`).text(), "style");
   const template = await Bun.file(`${ROOT}/src/index.html`).text();
 
-  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__JS__*/", "__BUILD__"]) {
+  // Inline the favicon so the build stays a single, self-contained file.
+  const faviconSvg = (await Bun.file(FAVICON_FILE).text()).trim();
+  const favicon = `data:image/svg+xml,${encodeURIComponent(faviconSvg).replace(/'/g, "%27")}`;
+
+  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__JS__*/", "__BUILD__", "__FAVICON__"]) {
     if (!template.includes(placeholder)) {
       throw new Error(`src/index.html is missing the ${placeholder} placeholder`);
     }
@@ -71,6 +76,7 @@ async function bundle(mermaid: string): Promise<string> {
 
   return template
     .replace("__BUILD__", () => buildId)
+    .replace("__FAVICON__", () => favicon)
     .replace("/*__CSS__*/", () => css)
     .replace("/*__MERMAID__*/", () => mermaid)
     .replace("/*__JS__*/", () => js);
