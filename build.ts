@@ -59,13 +59,18 @@ async function bundle(mermaid: string): Promise<string> {
   const css = escapeClosingTag(await Bun.file(`${ROOT}/src/styles.css`).text(), "style");
   const template = await Bun.file(`${ROOT}/src/index.html`).text();
 
-  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__JS__*/"]) {
+  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__JS__*/", "__BUILD__"]) {
     if (!template.includes(placeholder)) {
       throw new Error(`src/index.html is missing the ${placeholder} placeholder`);
     }
   }
 
+  const buildId = `${new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-")}${
+    WITHOUT_MERMAID ? "-no-mermaid" : ""
+  }`;
+
   return template
+    .replace("__BUILD__", () => buildId)
     .replace("/*__CSS__*/", () => css)
     .replace("/*__MERMAID__*/", () => mermaid)
     .replace("/*__JS__*/", () => js);

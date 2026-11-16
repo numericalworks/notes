@@ -95,6 +95,9 @@ follow the text colour. Malformed expressions fall back to showing the source.
 **Mermaid** ([mermaid.js.org](https://mermaid.js.org/)):
 
 - Write a fenced block tagged `mermaid`.
+- Diagrams keep their natural size and are only scaled down when they do not fit the
+  pane; flowchart nodes hug their labels (Mermaid's default 120 px minimum node width made
+  small charts unnecessarily massive).
 - Diagrams render a moment after you stop typing (200 ms) and are cached per theme, so
   editing text elsewhere never re-renders an unchanged diagram.
 - Invalid diagrams show Mermaid's error message inline instead of breaking the preview.
