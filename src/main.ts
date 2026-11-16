@@ -30,6 +30,8 @@ const trashNote = must<HTMLButtonElement>("#trash-note");
 const moveNoteButton = must<HTMLButtonElement>("#move-note");
 const movePopover = must<HTMLElement>("#move-popover");
 const moveFolders = must<HTMLElement>("#move-folders");
+const togglePreviewButton = must<HTMLButtonElement>("#toggle-preview");
+const focusPreviewButton = must<HTMLButtonElement>("#focus-preview");
 
 const toolbarButtons = Array.from(mdToolbar.querySelectorAll<HTMLButtonElement>("button"));
 const themeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-mode]"));
@@ -862,6 +864,79 @@ for (const button of viewButtons) {
   });
 }
 
+/* ------------------------------------------------------------------ *
+ * Preview visibility and full-screen reading mode
+ * ------------------------------------------------------------------ */
+
+type PreviewMode = "split" | "hidden";
+
+const PREVIEW_KEY = "notes.preview";
+
+function readPreviewMode(): PreviewMode {
+  try {
+    return localStorage.getItem(PREVIEW_KEY) === "hidden" ? "hidden" : "split";
+  } catch {
+    return "split";
+  }
+}
+
+let previewMode: PreviewMode = readPreviewMode();
+let fullScreenPreview = false;
+
+function applyPreviewUI(): void {
+  document.body.dataset.preview = previewMode;
+  document.body.dataset.focusPreview = String(fullScreenPreview);
+
+  const isSplit = previewMode === "split";
+  togglePreviewButton.setAttribute("aria-pressed", String(isSplit));
+  togglePreviewButton.title = isSplit ? "Hide preview (⌘\\)" : "Show preview (⌘\\)";
+  togglePreviewButton.setAttribute("aria-label", isSplit ? "Hide preview" : "Show preview");
+
+  focusPreviewButton.setAttribute("aria-pressed", String(fullScreenPreview));
+  focusPreviewButton.title = fullScreenPreview
+    ? "Exit full-screen preview (Esc)"
+    : "Full-screen preview (⌘⇧P)";
+  focusPreviewButton.setAttribute(
+    "aria-label",
+    fullScreenPreview ? "Exit full-screen preview" : "Full-screen preview",
+  );
+}
+
+function setPreviewMode(mode: PreviewMode): void {
+  previewMode = mode;
+  try {
+    localStorage.setItem(PREVIEW_KEY, mode);
+  } catch {
+    // Ignore unavailable storage.
+  }
+  applyPreviewUI();
+}
+
+function setFullScreenPreview(on: boolean): void {
+  if (on && previewMode === "hidden") setPreviewMode("split");
+  fullScreenPreview = on;
+  applyPreviewUI();
+
+  if (on) {
+    hideMovePopover();
+    closeDrawers();
+    preview.focus({ preventScroll: true });
+  } else if (editor.offsetParent !== null) {
+    editor.focus();
+  }
+}
+
+function togglePreviewPane(): void {
+  if (fullScreenPreview) {
+    setFullScreenPreview(false);
+    return;
+  }
+  setPreviewMode(previewMode === "split" ? "hidden" : "split");
+}
+
+togglePreviewButton.addEventListener("click", togglePreviewPane);
+focusPreviewButton.addEventListener("click", () => setFullScreenPreview(!fullScreenPreview));
+
 must<HTMLButtonElement>("#toggle-sidebar").addEventListener("click", () => {
   document.body.dataset.drawer = "sidebar";
 });
@@ -875,6 +950,18 @@ backdrop.addEventListener("click", closeDrawers);
 document.addEventListener("keydown", (event) => {
   const mod = event.metaKey || event.ctrlKey;
   const key = event.key.toLowerCase();
+
+  if (mod && key === "\\") {
+    event.preventDefault();
+    togglePreviewPane();
+    return;
+  }
+
+  if (mod && event.shiftKey && key === "p") {
+    event.preventDefault();
+    setFullScreenPreview(!fullScreenPreview);
+    return;
+  }
 
   if (mod && key === "k") {
     event.preventDefault();
@@ -897,6 +984,11 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (event.key === "Escape") {
+    if (fullScreenPreview) {
+      event.preventDefault();
+      setFullScreenPreview(false);
+      return;
+    }
     hideMovePopover();
     closeDrawers();
   }
@@ -922,4 +1014,5 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
 const searchHint = document.querySelector<HTMLElement>(".search-field kbd");
 if (searchHint) searchHint.textContent = isMac ? "⌘K" : "Ctrl K";
 
+applyPreviewUI();
 renderAll();

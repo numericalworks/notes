@@ -30,6 +30,9 @@ bun run typecheck  # tsc --noEmit
 - **Four panes, one window** — folders sidebar, notes list, Markdown source, live preview.
 - **Folders** — create, rename, delete and move notes between them; deleting a folder
   sends its notes to Recently Deleted rather than destroying them.
+- **Preview on your terms** — hide the preview pane when you only want to write
+  (`⌘\`, remembered across reloads), or expand it into a distraction-free full-screen
+  reader (`⌘⇧P`, `Esc` to exit).
 - **Live preview** rendered on every keystroke, with proportional scroll sync from the
   editor to the preview.
 - **Themes** — Auto (follows the OS via `prefers-color-scheme`), Light, Dark. The theme
@@ -48,6 +51,10 @@ bun run typecheck  # tsc --noEmit
 <p align="center">
   <img src="docs/screenshot-dark.png" alt="Dark theme" width="49%" />
   <img src="docs/screenshot-mobile.png" alt="Mobile preview" width="24%" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-focus.png" alt="Full-screen preview" width="80%" />
 </p>
 
 ## Folder basics
@@ -71,9 +78,11 @@ bun run typecheck  # tsc --noEmit
 | `⌘K` / `Ctrl+K` | Focus search |
 | `⌘B` / `Ctrl+B` | Bold |
 | `⌘I` / `Ctrl+I` | Italic |
+| `⌘\` / `Ctrl+\` | Show / hide the preview pane |
+| `⌘⇧P` / `Ctrl+Shift+P` | Full-screen preview |
 | `Tab` | Indent by two spaces |
 | `Enter` | Continue the current list (empty item exits the list) |
-| `Esc` | Clear search, close popovers and drawers |
+| `Esc` | Exit full-screen preview, clear search, close popovers and drawers |
 
 ## Markdown support
 
@@ -114,7 +123,7 @@ never terminate its own tag.
 src/
   index.html   layout + inline theme bootstrap
   styles.css   design tokens (light/dark) + all UI styles
-  main.ts      editor, list, folders, search, trash, shortcuts, drawers
+  main.ts      editor, list, folders, preview modes, search, trash, shortcuts
   markdown.ts  dependency-free Markdown renderer with highlighting
   store.ts     notes + folders, ordering, migration, debounced persistence
   theme.ts     theme mode resolution and system sync

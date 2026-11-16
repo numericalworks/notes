@@ -147,6 +147,18 @@ button {
   grid-template-columns: 236px 306px minmax(0, 1fr) minmax(0, 1.04fr);
 }
 
+body[data-preview="hidden"] .app {
+  grid-template-columns: 236px 306px minmax(0, 1fr);
+}
+
+body[data-preview="hidden"] .preview-pane {
+  display: none;
+}
+
+body[data-preview="hidden"] .editor-pane {
+  border-right: 0;
+}
+
 /* ------------------------------------------------------------------ *
  * Sidebar
  * ------------------------------------------------------------------ */
@@ -497,6 +509,30 @@ button {
   color: #ff3b30;
 }
 
+.icon-collapse {
+  display: none;
+}
+
+body[data-focus-preview="true"] .icon-expand {
+  display: none;
+}
+
+body[data-focus-preview="true"] .icon-collapse {
+  display: block;
+}
+
+.focus-hint {
+  display: none;
+  margin-right: 2px;
+  font-size: 10.5px;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+body[data-focus-preview="true"] .focus-hint {
+  display: inline;
+}
+
 .icon-btn:disabled {
   opacity: 0.35;
   cursor: default;
@@ -572,12 +608,14 @@ button {
 }
 
 .pane-sub {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
   font-size: 11px;
   color: var(--text-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 60%;
 }
 
 .note-list {
@@ -1209,6 +1247,10 @@ button {
     grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1.04fr);
   }
 
+  body[data-preview="hidden"] .app {
+    grid-template-columns: 300px minmax(0, 1fr);
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -1242,6 +1284,10 @@ button {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  body[data-preview="hidden"] .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .list-pane {
     position: fixed;
     top: 0;
@@ -1265,6 +1311,10 @@ button {
   .preview-pane,
   .editor-pane {
     border-right: 0;
+  }
+
+  .only-desktop {
+    display: none;
   }
 
   .preview-pane {
@@ -1341,5 +1391,42 @@ button {
   *::after {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Full-screen reading mode: only the preview remains
+ * ------------------------------------------------------------------ */
+
+#preview:focus {
+  outline: none;
+}
+
+body[data-focus-preview="true"] .app {
+  display: flex;
+}
+
+body[data-focus-preview="true"] .mobile-bar,
+body[data-focus-preview="true"] .sidebar,
+body[data-focus-preview="true"] .list-pane,
+body[data-focus-preview="true"] .editor-pane,
+body[data-focus-preview="true"] .backdrop {
+  display: none;
+}
+
+body[data-focus-preview="true"] .preview-pane {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+body[data-focus-preview="true"] .preview {
+  padding: 34px max(30px, calc((100% - 840px) / 2)) 120px;
+}
+
+/* Touch devices have no Escape key; they use the collapse button instead. */
+@media (hover: none) {
+  body[data-focus-preview="true"] .focus-hint {
+    display: none;
   }
 }

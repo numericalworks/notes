@@ -73,6 +73,8 @@ const SEED_BODY = [
   "| `⌘K` | Search |",
   "| `⌘B` | Bold |",
   "| `⌘I` | Italic |",
+  "| `⌘\\` | Toggle preview pane |",
+  "| `⌘⇧P` | Full-screen preview |",
   "",
   "---",
   "",

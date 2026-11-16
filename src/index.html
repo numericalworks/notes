@@ -111,6 +111,19 @@
           <header class="pane-head">
             <span class="note-stamp" id="note-stamp"></span>
             <div class="head-actions">
+              <button
+                type="button"
+                class="icon-btn only-desktop"
+                id="toggle-preview"
+                aria-pressed="true"
+                title="Hide preview (⌘\\)"
+                aria-label="Toggle preview pane"
+              >
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                  <rect x="2.6" y="4" width="14.8" height="12" rx="2.2" />
+                  <path d="M11.4 4.6v10.8" />
+                </svg>
+              </button>
               <button type="button" class="icon-btn" id="move-note" title="Move to folder" aria-label="Move to folder">
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M3 6.4A1.4 1.4 0 0 1 4.4 5h3l1.4 1.8h6.8A1.4 1.4 0 0 1 17 8.2v6.4a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 14.6z" />
@@ -184,8 +197,24 @@
           <header class="pane-head">
             <span class="pane-title">Preview</span>
             <span class="pane-sub" id="preview-title"></span>
+            <span class="focus-hint">Esc to exit</span>
+            <button
+              type="button"
+              class="icon-btn"
+              id="focus-preview"
+              aria-pressed="false"
+              title="Full-screen preview (⌘⇧P)"
+              aria-label="Full-screen preview"
+            >
+              <svg class="icon icon-expand" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.5 7.5v-4h4M16.5 7.5v-4h-4M3.5 12.5v4h4M16.5 12.5v4h-4" />
+              </svg>
+              <svg class="icon icon-collapse" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M7.5 3.5v4h-4M12.5 3.5v4h4M7.5 16.5v-4h-4M12.5 16.5v-4h4" />
+              </svg>
+            </button>
           </header>
-          <article class="preview" id="preview"></article>
+          <article class="preview" id="preview" tabindex="-1"></article>
         </section>
       </div>
     </div>
