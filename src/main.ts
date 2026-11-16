@@ -210,16 +210,7 @@ function renderFolders(): void {
   const totals = store.counts();
   const fragment = document.createDocumentFragment();
 
-  fragment.appendChild(folderRow({ id: ALL_VIEW, name: "All Notes" }, totals.notes, FOLDER_ICON));
-
-  for (const folder of store.folders) {
-    fragment.appendChild(
-      editingFolderId === folder.id
-        ? folderInput(folder.name, folder.id)
-        : folderRow(folder, counts[folder.id] ?? 0, FOLDER_ICON),
-    );
-  }
-
+  // "New Folder" sits at the top of the list, above every folder view.
   if (creatingFolder) {
     fragment.appendChild(folderInput("", "new"));
   } else {
@@ -232,6 +223,16 @@ function renderFolders(): void {
     button.innerHTML = `${PLUS_ICON}<span class="folder-name">New Folder</span>`;
     row.appendChild(button);
     fragment.appendChild(row);
+  }
+
+  fragment.appendChild(folderRow({ id: ALL_VIEW, name: "All Notes" }, totals.notes, FOLDER_ICON));
+
+  for (const folder of store.folders) {
+    fragment.appendChild(
+      editingFolderId === folder.id
+        ? folderInput(folder.name, folder.id)
+        : folderRow(folder, counts[folder.id] ?? 0, FOLDER_ICON),
+    );
   }
 
   const separator = document.createElement("div");

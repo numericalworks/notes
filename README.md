@@ -59,7 +59,8 @@ bun run typecheck  # tsc --noEmit
 
 ## Folder basics
 
-- **Create** — click `+` next to *Folders* or the **New Folder** row, type a name, press `Enter`.
+- **Create** — click `+` next to *Folders* or the **New Folder** row at the top of the list,
+  type a name, press `Enter`.
 - **Rename / delete** — hover a folder row for its pencil and trash buttons. Deleting asks for
   confirmation and moves that folder's notes to Recently Deleted.
 - **Move a note** — open the folder button above the editor and pick a destination. The note
