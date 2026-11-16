@@ -1,5 +1,5 @@
 import { escapeHtml, renderMarkdown } from "./markdown";
-import { NotesStore, type Folder, type Note } from "./store";
+import { ALL_VIEW, NotesStore, TRASH_VIEW, type Note, type NoteFolder } from "./store";
 import { applyTheme, currentThemeMode, initTheme, type ThemeMode } from "./theme";
 
 /* ------------------------------------------------------------------ *
@@ -22,13 +22,14 @@ const wordCount = must<HTMLElement>("#word-count");
 const searchInput = must<HTMLInputElement>("#search");
 const backdrop = must<HTMLElement>("#backdrop");
 const folders = must<HTMLElement>("#folders");
-const countNotes = must<HTMLElement>("#count-notes");
-const countTrash = must<HTMLElement>("#count-trash");
 const emptyTrash = must<HTMLButtonElement>("#empty-trash");
 const trashBanner = must<HTMLElement>("#trash-banner");
 const mdToolbar = must<HTMLElement>("#md-toolbar");
 const exportNote = must<HTMLButtonElement>("#export-note");
 const trashNote = must<HTMLButtonElement>("#trash-note");
+const moveNoteButton = must<HTMLButtonElement>("#move-note");
+const movePopover = must<HTMLElement>("#move-popover");
+const moveFolders = must<HTMLElement>("#move-folders");
 
 const toolbarButtons = Array.from(mdToolbar.querySelectorAll<HTMLButtonElement>("button"));
 const themeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-mode]"));
@@ -36,6 +37,20 @@ const viewButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[da
 
 const store = new NotesStore();
 let query = "";
+
+let editingFolderId: string | null = null;
+let creatingFolder = false;
+
+const FOLDER_ICON =
+  '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.4A1.4 1.4 0 0 1 4.4 5h3l1.4 1.8h6.8A1.4 1.4 0 0 1 17 8.2v6.4a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 14.6z"/></svg>';
+const TRASH_ICON =
+  '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.2h11M8.2 6.2V4.6h3.6v1.6M6.2 6.2l.6 9.2h6.4l.6-9.2"/></svg>';
+const PLUS_ICON =
+  '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>';
+const PENCIL_ICON =
+  '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.4 3.9l3.7 3.7M4 16l.9-3.6 7.9-7.9a1 1 0 0 1 1.4 0l1.3 1.3a1 1 0 0 1 0 1.4l-7.9 7.9z"/></svg>';
+const CHECK_ICON =
+  '<svg class="icon check" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>';
 
 /* ------------------------------------------------------------------ *
  * Text helpers
@@ -112,19 +127,124 @@ function slugify(value: string): string {
 
 function renderChrome(): void {
   const counts = store.counts();
-  countNotes.textContent = String(counts.notes);
-  countTrash.textContent = String(counts.trash);
-  listTitle.textContent = store.folder === "trash" ? "Recently Deleted" : "All Notes";
-  emptyTrash.hidden = store.folder !== "trash" || counts.trash === 0;
-
-  for (const button of Array.from(folders.querySelectorAll<HTMLButtonElement>("[data-folder]"))) {
-    button.setAttribute("aria-current", String(button.dataset.folder === store.folder));
-  }
+  listTitle.textContent =
+    store.view === TRASH_VIEW
+      ? "Recently Deleted"
+      : store.view === ALL_VIEW
+        ? "All Notes"
+        : store.folderName(store.view);
+  emptyTrash.hidden = store.view !== TRASH_VIEW || counts.trash === 0;
 
   const note = store.active();
   previewTitle.textContent = note ? deriveTitle(note) : "";
   syncThemeButtons();
   syncViewButtons();
+}
+
+function folderRow(folder: NoteFolder | { id: string; name: string }, count: number, icon: string): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "folder-row";
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "folder";
+  button.dataset.folder = folder.id;
+  button.setAttribute("aria-current", String(store.view === folder.id));
+  button.innerHTML = `${icon}<span class="folder-name">${escapeHtml(folder.name)}</span><span class="count">${count}</span>`;
+  row.appendChild(button);
+
+  // User folders can be renamed or deleted from hover actions.
+  if (folder.id !== ALL_VIEW && folder.id !== TRASH_VIEW) {
+    const actions = document.createElement("div");
+    actions.className = "folder-actions";
+
+    const rename = document.createElement("button");
+    rename.type = "button";
+    rename.className = "folder-action";
+    rename.dataset.renameFolder = folder.id;
+    rename.title = "Rename folder";
+    rename.setAttribute("aria-label", `Rename ${folder.name}`);
+    rename.innerHTML = PENCIL_ICON;
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "folder-action danger";
+    remove.dataset.deleteFolder = folder.id;
+    remove.title = "Delete folder";
+    remove.setAttribute("aria-label", `Delete ${folder.name}`);
+    remove.innerHTML = TRASH_ICON;
+
+    actions.append(rename, remove);
+    row.appendChild(actions);
+  }
+
+  return row;
+}
+
+function folderInput(value: string, target: string): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "folder-row folder-row-editing";
+
+  const icon = document.createElement("span");
+  icon.className = "folder-glyph";
+  icon.innerHTML = FOLDER_ICON;
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "folder-input";
+  input.value = value;
+  input.dataset.folderInput = target;
+  input.placeholder = "Folder name";
+  input.autocomplete = "off";
+  input.spellcheck = false;
+  input.setAttribute("aria-label", "Folder name");
+
+  row.append(icon, input);
+  return row;
+}
+
+function renderFolders(): void {
+  const counts = store.folderCounts();
+  const totals = store.counts();
+  const fragment = document.createDocumentFragment();
+
+  fragment.appendChild(folderRow({ id: ALL_VIEW, name: "All Notes" }, totals.notes, FOLDER_ICON));
+
+  for (const folder of store.folders) {
+    fragment.appendChild(
+      editingFolderId === folder.id
+        ? folderInput(folder.name, folder.id)
+        : folderRow(folder, counts[folder.id] ?? 0, FOLDER_ICON),
+    );
+  }
+
+  if (creatingFolder) {
+    fragment.appendChild(folderInput("", "new"));
+  } else {
+    const row = document.createElement("div");
+    row.className = "folder-row";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "folder folder-new";
+    button.id = "new-folder-row";
+    button.innerHTML = `${PLUS_ICON}<span class="folder-name">New Folder</span>`;
+    row.appendChild(button);
+    fragment.appendChild(row);
+  }
+
+  const separator = document.createElement("div");
+  separator.className = "folders-sep";
+  fragment.appendChild(separator);
+
+  fragment.appendChild(folderRow({ id: TRASH_VIEW, name: "Recently Deleted" }, totals.trash, TRASH_ICON));
+
+  folders.replaceChildren(fragment);
+
+  const input = folders.querySelector<HTMLInputElement>(".folder-input");
+  if (input && document.activeElement !== input) {
+    input.focus();
+    input.select();
+  }
 }
 
 function renderList(): void {
@@ -136,7 +256,7 @@ function renderList(): void {
     empty.className = "list-empty";
     empty.textContent = query.trim()
       ? `No notes match “${query.trim()}”.`
-      : store.folder === "trash"
+      : store.view === TRASH_VIEW
         ? "Recently Deleted is empty."
         : "No notes yet. Press Alt+N to create one.";
     fragment.appendChild(empty);
@@ -149,7 +269,7 @@ function renderList(): void {
       row.setAttribute("role", "option");
       row.setAttribute("aria-selected", String(note.id === store.selectedId));
 
-      const stamp = store.folder === "trash" ? (note.deletedAt ?? note.updatedAt) : note.updatedAt;
+      const stamp = store.view === TRASH_VIEW ? (note.deletedAt ?? note.updatedAt) : note.updatedAt;
       row.innerHTML =
         `<span class="note-title">${escapeHtml(deriveTitle(note))}</span>` +
         `<span class="note-meta">${escapeHtml(formatRelative(stamp))} · ${escapeHtml(snippet(note))}</span>`;
@@ -163,7 +283,7 @@ function renderList(): void {
 
 function renderEditor(): void {
   const note = store.active();
-  const inTrash = store.folder === "trash";
+  const inTrash = store.view === TRASH_VIEW;
   const hasNote = note !== null;
 
   editor.readOnly = !hasNote || inTrash;
@@ -181,6 +301,8 @@ function renderEditor(): void {
   exportNote.disabled = !hasNote;
   trashNote.disabled = !hasNote || inTrash;
   trashNote.hidden = inTrash;
+  moveNoteButton.hidden = inTrash;
+  moveNoteButton.disabled = !hasNote || inTrash;
 
   noteStamp.textContent = note
     ? inTrash
@@ -201,7 +323,7 @@ function renderPreview(): void {
   }
 
   const message = !note
-    ? store.folder === "trash"
+    ? store.view === TRASH_VIEW
       ? "Recently Deleted is empty."
       : "Select a note to preview it."
     : "Nothing to preview yet — start typing on the left.";
@@ -209,7 +331,9 @@ function renderPreview(): void {
 }
 
 function renderAll(): void {
+  hideMovePopover();
   renderChrome();
+  renderFolders();
   renderList();
   renderEditor();
   renderPreview();
@@ -333,7 +457,7 @@ function runFormat(action: string): void {
 
 editor.addEventListener("input", () => {
   const note = store.active();
-  if (!note || store.folder === "trash") return;
+  if (!note || store.view === TRASH_VIEW) return;
 
   store.updateBody(note.id, editor.value);
   noteStamp.textContent = `Edited ${formatFull(note.updatedAt)}`;
@@ -420,15 +544,157 @@ noteList.addEventListener("click", (event) => {
   closeDrawers();
 });
 
-folders.addEventListener("click", (event) => {
-  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-folder]");
-  const folder = button?.dataset.folder;
-  if (folder !== "notes" && folder !== "trash") return;
+function startCreatingFolder(): void {
+  creatingFolder = true;
+  editingFolderId = null;
+  renderFolders();
+}
 
-  store.setFolder(folder as Folder);
+function cancelFolderEdit(): void {
+  creatingFolder = false;
+  editingFolderId = null;
+  renderFolders();
+}
+
+function commitFolderEdit(input: HTMLInputElement): void {
+  const target = input.dataset.folderInput;
+  const name = input.value.trim();
+
+  if (target === "new") {
+    creatingFolder = false;
+    if (!name) {
+      renderFolders();
+      return;
+    }
+    store.createFolder(name);
+    renderAll();
+    return;
+  }
+
+  if (!target) return;
+  editingFolderId = null;
+  if (name) store.renameFolder(target, name);
+  renderAll();
+}
+
+folders.addEventListener("click", (event) => {
+  const target = event.target as HTMLElement;
+
+  const remove = target.closest<HTMLButtonElement>("[data-delete-folder]");
+  if (remove?.dataset.deleteFolder) {
+    const id = remove.dataset.deleteFolder;
+    const name = store.folderName(id);
+    if (window.confirm(`Delete “${name}”? Its notes will move to Recently Deleted.`)) {
+      store.deleteFolder(id);
+      renderAll();
+    }
+    return;
+  }
+
+  const rename = target.closest<HTMLButtonElement>("[data-rename-folder]");
+  if (rename?.dataset.renameFolder) {
+    editingFolderId = rename.dataset.renameFolder;
+    creatingFolder = false;
+    renderFolders();
+    return;
+  }
+
+  if (target.closest("#new-folder-row")) {
+    startCreatingFolder();
+    return;
+  }
+
+  const button = target.closest<HTMLButtonElement>("[data-folder]");
+  const view = button?.dataset.folder;
+  if (!view) return;
+
+  store.setView(view);
+  query = "";
+  searchInput.value = "";
+  editingFolderId = null;
+  creatingFolder = false;
   renderAll();
   editor.focus();
   closeDrawers();
+});
+
+must<HTMLButtonElement>("#new-folder").addEventListener("click", startCreatingFolder);
+
+folders.addEventListener("keydown", (event) => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.classList.contains("folder-input")) return;
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    cancelFolderEdit();
+  } else if (event.key === "Enter") {
+    event.preventDefault();
+    commitFolderEdit(input);
+  }
+});
+
+folders.addEventListener("focusout", (event) => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.classList.contains("folder-input")) return;
+
+  // Commit once focus has really left the input (clicks on other folders land first).
+  requestAnimationFrame(() => {
+    if (input.isConnected && document.activeElement !== input) commitFolderEdit(input);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Move-to-folder popover
+ * ------------------------------------------------------------------ */
+
+function hideMovePopover(): void {
+  movePopover.hidden = true;
+}
+
+function renderMoveFolders(): void {
+  const note = store.active();
+  if (!note) return;
+
+  moveFolders.innerHTML = store.folders
+    .map((folder) => {
+      const current = folder.id === note.folderId;
+      return (
+        `<button type="button" class="popover-item" data-move-to="${folder.id}">` +
+        FOLDER_ICON +
+        `<span class="folder-name">${escapeHtml(folder.name)}</span>` +
+        (current ? CHECK_ICON : "") +
+        "</button>"
+      );
+    })
+    .join("");
+}
+
+moveNoteButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (!movePopover.hidden) {
+    hideMovePopover();
+    return;
+  }
+  renderMoveFolders();
+  movePopover.hidden = false;
+});
+
+moveFolders.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-move-to]");
+  const folderId = button?.dataset.moveTo;
+  const note = store.active();
+  if (!folderId || !note) return;
+
+  store.moveNote(note.id, folderId);
+  renderAll();
+  editor.focus();
+});
+
+document.addEventListener("click", (event) => {
+  if (movePopover.hidden) return;
+  const target = event.target as Node;
+  if (movePopover.contains(target) || moveNoteButton.contains(target)) return;
+  hideMovePopover();
 });
 
 searchInput.addEventListener("input", () => {
@@ -614,6 +880,7 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (event.key === "Escape") {
+    hideMovePopover();
     closeDrawers();
   }
 });

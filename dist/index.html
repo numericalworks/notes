@@ -38,6 +38,7 @@
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   --shadow-drawer: 0 20px 50px rgba(0, 0, 0, 0.22);
+  --shadow-pop: 0 18px 40px rgba(0, 0, 0, 0.16);
   --scrollbar: rgba(0, 0, 0, 0.19);
 
   --tok-comment: #6e7781;
@@ -75,6 +76,7 @@
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-drawer: 0 24px 60px rgba(0, 0, 0, 0.65);
+  --shadow-pop: 0 22px 50px rgba(0, 0, 0, 0.6);
   --scrollbar: rgba(255, 255, 255, 0.17);
 
   --tok-comment: #7f848e;
@@ -193,6 +195,40 @@ button {
   color: var(--text-3);
 }
 
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px 0 6px;
+}
+
+.section-head .section-label {
+  padding: 0;
+}
+
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.mini-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.mini-btn .icon {
+  width: 13px;
+  height: 13px;
+}
+
 .search-field {
   display: flex;
   align-items: center;
@@ -238,6 +274,115 @@ button {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+
+.folder-row {
+  position: relative;
+  flex: none;
+}
+
+.folder-actions {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.folder-row:hover .folder-actions,
+.folder-row:focus-within .folder-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.folder-row:hover .count,
+.folder-row:focus-within .count {
+  visibility: hidden;
+}
+
+.folder-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.folder-action .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.folder-action:hover {
+  background: var(--active);
+  color: var(--text);
+}
+
+.folder-action.danger:hover {
+  color: #ff3b30;
+}
+
+.folder-new {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.folder-new:hover {
+  color: var(--text);
+}
+
+.folder-new .icon {
+  color: var(--text-3);
+}
+
+.folder-row-editing {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 6px;
+}
+
+.folder-glyph {
+  display: inline-flex;
+  color: var(--text-3);
+}
+
+.folder-glyph .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.folder-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.folders-sep {
+  height: 1px;
+  flex: none;
+  margin: 6px 4px;
+  background: var(--border);
 }
 
 .folder {
@@ -505,6 +650,7 @@ button {
  * ------------------------------------------------------------------ */
 
 .editor-pane {
+  position: relative;
   background: var(--bg-canvas);
   border-right: 1px solid var(--border);
 }
@@ -538,6 +684,69 @@ button {
   flex: 1;
   min-width: 0;
   color: var(--text-2);
+}
+
+.popover {
+  position: absolute;
+  top: 52px;
+  right: 12px;
+  z-index: 40;
+  width: 232px;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-pop);
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+
+.popover-head {
+  padding: 4px 8px 6px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.popover-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.popover-item:hover {
+  background: var(--hover);
+}
+
+.popover-item .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-3);
+}
+
+.popover-item .folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover-item .check {
+  color: var(--accent);
 }
 
 .tb-row {
@@ -1199,23 +1408,15 @@ button {
             <kbd>⌘K</kbd>
           </label>
 
-          <div class="section-label">Folders</div>
-          <nav class="folders" id="folders">
-            <button type="button" class="folder" data-folder="notes">
+          <div class="section-head">
+            <span class="section-label">Folders</span>
+            <button type="button" class="mini-btn" id="new-folder" title="New folder" aria-label="New folder">
               <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M3 6.2A1.2 1.2 0 0 1 4.2 5h3.1l1.4 1.8h7.1A1.2 1.2 0 0 1 17 8v6.8a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 14.8z" />
+                <path d="M10 4v12M4 10h12" />
               </svg>
-              <span class="folder-name">All Notes</span>
-              <span class="count" id="count-notes">0</span>
             </button>
-            <button type="button" class="folder" data-folder="trash">
-              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
-                <path d="M4.5 6.2h11M8.2 6.2V4.6h3.6v1.6M6.2 6.2l.6 9.2h6.4l.6-9.2" />
-              </svg>
-              <span class="folder-name">Recently Deleted</span>
-              <span class="count" id="count-trash">0</span>
-            </button>
-          </nav>
+          </div>
+          <nav class="folders" id="folders" aria-label="Folders"></nav>
 
           <div class="sidebar-foot">
             <div class="section-label">Appearance</div>
@@ -1255,6 +1456,12 @@ button {
           <header class="pane-head">
             <span class="note-stamp" id="note-stamp"></span>
             <div class="head-actions">
+              <button type="button" class="icon-btn" id="move-note" title="Move to folder" aria-label="Move to folder">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M3 6.4A1.4 1.4 0 0 1 4.4 5h3l1.4 1.8h6.8A1.4 1.4 0 0 1 17 8.2v6.4a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 14.6z" />
+                  <path d="M7.4 11.9h4.4M9.9 9.9l2 2-2 2" />
+                </svg>
+              </button>
               <button type="button" class="icon-btn" id="export-note" title="Download as Markdown" aria-label="Download note">
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M10 3.2v9M10 12.2l3.2-3.2M10 12.2L6.8 9M4 15.8h12" />
@@ -1267,6 +1474,11 @@ button {
               </button>
             </div>
           </header>
+
+          <div class="popover" id="move-popover" hidden>
+            <div class="popover-head">Move to folder</div>
+            <div class="popover-list" id="move-folders"></div>
+          </div>
 
           <div class="trash-banner" id="trash-banner" hidden>
             <span class="trash-text">This note is in Recently Deleted.</span>
@@ -1322,24 +1534,24 @@ button {
         </section>
       </div>
     </div>
-    <script>var Ct={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};function m(t){return t.replace(/[&<>"']/g,(e)=>Ct[e]??e)}var _="async await break case catch class const continue debugger default delete do else export extends finally for from function get if import in instanceof let new of return set static super switch this throw try typeof var void while with yield true false null undefined".split(" "),q=[..._,"any boolean never number object readonly string symbol unknown","interface type enum implements namespace declare abstract as satisfies keyof","public private protected infer is asserts override"].join(" ").split(" "),et="and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield".split(" "),Y="if then else elif fi for while do done case esac function return export local echo".split(" "),Rt="select from where insert into values update set delete create table alter drop join left right inner outer on group by order having limit offset as and or not null primary key foreign references index distinct union all case when then else end".split(" "),Bt={js:{keywords:_,line:["//"],block:!0},jsx:{keywords:_,line:["//"],block:!0},javascript:{keywords:_,line:["//"],block:!0},mjs:{keywords:_,line:["//"],block:!0},ts:{keywords:q,line:["//"],block:!0},tsx:{keywords:q,line:["//"],block:!0},typescript:{keywords:q,line:["//"],block:!0},json:{keywords:["true","false","null"],line:[]},css:{keywords:[],line:[],block:!0},scss:{keywords:[],line:["//"],block:!0},py:{keywords:et,line:["#"]},python:{keywords:et,line:["#"]},sh:{keywords:Y,line:["#"]},bash:{keywords:Y,line:["#"]},zsh:{keywords:Y,line:["#"]},yaml:{keywords:["true","false","null"],line:["#"]},yml:{keywords:["true","false","null"],line:["#"]},toml:{keywords:["true","false"],line:["#"]},sql:{keywords:Rt,line:["--"],block:!0},go:{keywords:"break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var true false nil".split(" "),line:["//"],block:!0},rust:{keywords:"as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait true type unsafe use where while".split(" "),line:["//"],block:!0},java:{keywords:"abstract boolean break byte case catch char class const continue default do double else enum extends final finally float for if implements import instanceof int interface long new null package private protected public return short static super switch synchronized this throw throws try void volatile while true false".split(" "),line:["//"],block:!0},html:{keywords:[],line:[],kind:"markup"},xml:{keywords:[],line:[],kind:"markup"},svg:{keywords:[],line:[],kind:"markup"}};function w(t,e){return`<span class="tok-${t}">${m(e)}</span>`}function Ot(t){let e=/^(<\/?)([A-Za-z][\w:-]*)([\s\S]*?)(\/?>)$/.exec(t);if(!e)return w("tag",t);let n=e[1],s=e[2],o=e[3],i=e[4],r=m(n)+w("tag",s),l=0;while(l<o.length){let c=o[l];if(/\s/.test(c)||c==="/"){r+=m(c),l+=1;continue}if(c==='"'||c==="'"){let a=o.indexOf(c,l+1),u=a===-1?o.length:a+1;r+=w("string",o.slice(l,u)),l=u;continue}let d=/^[^\s=/"'<>]+/.exec(o.slice(l));if(d){r+=w("attr",d[0]),l+=d[0].length;continue}r+=m(c),l+=1}return r+m(i)}function Ft(t){let e="",n=0;while(n<t.length){if(t.startsWith("<!--",n)){let i=t.indexOf("-->",n+4),r=i===-1?t.length:i+3;e+=w("comment",t.slice(n,r)),n=r;continue}if(t[n]==="<"&&/[A-Za-z!?/]/.test(t[n+1]??"")){let i=t.indexOf(">",n),r=i===-1?t.length:i+1;e+=Ot(t.slice(n,r)),n=r;continue}let s=t.indexOf("<",n+1),o=s===-1?t.length:s;e+=m(t.slice(n,o)),n=o}return e}function Kt(t,e){let n=Bt[e.toLowerCase()];if(!n)return m(t);if(n.kind==="markup")return Ft(t);let s=n.quotes??['"',"'","`"],o=new Set(n.keywords),i="",r=0;while(r<t.length){if(n.block&&t.startsWith("/*",r)){let a=t.indexOf("*/",r+2),u=a===-1?t.length:a+2;i+=w("comment",t.slice(r,u)),r=u;continue}let l=-1;for(let a of n.line)if(t.startsWith(a,r)){if(l=t.indexOf(`
-`,r),l===-1)l=t.length;break}if(l!==-1){i+=w("comment",t.slice(r,l)),r=l;continue}let c=t[r];if(s.includes(c)){let a=c==="`",u=r+1;while(u<t.length){let g=t[u];if(g==="\\"){u+=2;continue}if(g===c){u+=1;break}if(g===`
-`&&!a)break;u+=1}i+=w("string",t.slice(r,u)),r=u;continue}let d=r>0?t[r-1]:"";if(/[0-9]/.test(c)&&!/[\w$]/.test(d)){let a=/^(?:0[xXbBoO][0-9a-fA-F_]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)[a-zA-Z%]*/.exec(t.slice(r));if(a){i+=w("number",a[0]),r+=a[0].length;continue}}if(/[A-Za-z_$]/.test(c)){let a=/^[A-Za-z_$][\w$]*/.exec(t.slice(r))[0],u=/^\s*\(/.test(t.slice(r+a.length));if(o.has(a))i+=w("keyword",a);else if(u)i+=w("fn",a);else if(a==="true"||a==="false"||a==="null"||a==="undefined")i+=w("number",a);else i+=m(a);r+=a.length;continue}i+=m(c),r+=1}return i}var nt="\x00";function jt(t){let e=t,n="";while(/[.,;:!?]$/.test(e))n=e.slice(-1)+n,e=e.slice(0,-1);while(e.endsWith(")")&&(e.match(/\(/g)?.length??0)<(e.match(/\)/g)?.length??0))n=")"+n,e=e.slice(0,-1);return{href:e,trailing:n}}function P(t,e,n){let s=n?` title="${m(n)}"`:"";return`<a href="${m(t)}"${s} target="_blank" rel="noopener noreferrer">${e}</a>`}function B(t){if(!t)return"";let e=[],n=(i)=>`${nt}${e.push(i)-1}${nt}`,s=t;s=s.replace(/\\([\\`*_{}[\]()#+\-.!~>|])/g,(i,r)=>n(m(r))),s=s.replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g,(i,r,l)=>{let c=l.length>2&&l.startsWith(" ")&&l.endsWith(" ")?l.slice(1,-1):l;return n(`<code class="md-inline-code">${m(c)}</code>`)}),s=s.replace(/!\[([^\]]*)\]\(\s*([^\s)]+?)(?:\s+["']([^"']*)["'])?\s*\)/g,(i,r,l,c)=>{let d=c?` title="${m(c)}"`:"";return n(`<img class="md-img" src="${m(l)}" alt="${m(r)}"${d} loading="lazy">`)}),s=s.replace(/\[([^\]]+)\]\(\s*([^\s)]+?)(?:\s+["']([^"']*)["'])?\s*\)/g,(i,r,l,c)=>n(P(l,B(r),c))),s=s.replace(/<((?:https?:\/\/|mailto:)[^\s>]+)>/g,(i,r)=>n(P(r,m(r.replace(/^mailto:/,""))))),s=s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<>"'`]+)/g,(i,r,l)=>{let{href:c,trailing:d}=jt(l),a=c.startsWith("www.")?`https://${c}`:c;return`${r}${n(P(a,m(c)))}${d}`}),s=m(s);let o=(i)=>i.replace(/\*\*\*(?=\S)([\s\S]*?\S)\*\*\*/g,"<em><strong>$1</strong></em>").replace(/___(?=\S)([\s\S]*?\S)___/g,"<em><strong>$1</strong></em>").replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g,"<strong>$1</strong>").replace(/(^|[^\w])__(?=\S)([\s\S]*?\S)__(?![\w])/g,"$1<strong>$2</strong>").replace(/\*(?=\S)([^*\n]*?\S)\*(?!\*)/g,"<em>$1</em>").replace(/(^|[^\w])_(?=\S)([^_\n]*?\S)_(?![\w])/g,"$1<em>$2</em>").replace(/~~(?=\S)([\s\S]*?\S)~~/g,"<del>$1</del>");return s=s.split(`
-`).map(o).join("<br>"),s.replace(/\u0000(\d+)\u0000/g,(i,r)=>e[Number(r)]??"")}var ot=/^(\s*)(`{3,}|~{3,})[ \t]*([^\s`~]*)[ \t]*$/,it=/^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/,lt=/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/,U=/^ {0,3}>[ \t]?(.*)$/,Wt=/^(\s*)([-*+])([ \t]+)(.*)$/,qt=/^(\s*)(\d{1,9})([.)])([ \t]+)(.*)$/;function x(t){let e=0;for(let n of t)e+=n==="\t"?4:1;return e}function L(t){let e=Wt.exec(t);if(e){let s=x(e[1]);return{indent:s,contentIndent:s+1+x(e[3]),ordered:!1,start:1,content:e[4]}}let n=qt.exec(t);if(n){let s=x(n[1]);return{indent:s,contentIndent:s+n[2].length+1+x(n[4]),ordered:!0,start:Number(n[2]),content:n[5]}}return null}function ct(t,e){let n=0,s=0;while(s<t.length&&n<e){let o=t[s];if(o===" ")n+=1,s+=1;else if(o==="\t")n+=4,s+=1;else break}return t.slice(s)}function st(t){return ot.test(t)||it.test(t)||lt.test(t)||U.test(t)||L(t)!==null}function Yt(t,e){let n=e.trim().toLowerCase(),s=Kt(t,n);return`<div class="md-code-block"><div class="md-code-head"><span class="md-code-lang">${m(n||"text")}</span><button type="button" class="md-code-copy" data-copy>Copy</button></div><pre class="md-code"><code>${s}</code></pre></div>`}function R(t){let e=t.trim();if(e.startsWith("|"))e=e.slice(1);if(e.endsWith("|"))e=e.slice(0,-1);return e.split("|").map((n)=>n.trim())}function Pt(t){if(!t.includes("|"))return!1;let e=R(t);return e.length>0&&e.every((n)=>/^:?-{1,}:?$/.test(n))}function rt(t,e){let n=t[e],s=t[e+1];return Boolean(n&&s&&n.includes("|")&&Pt(s))}function Ut(t,e){let n=R(t[e]),s=R(t[e+1]).map((d)=>{let a=d.startsWith(":"),u=d.endsWith(":");return a&&u?"center":u?"right":a?"left":""}),o=e+2,i=[];while(o<t.length){let d=t[o];if(!d.trim()||!d.includes("|"))break;i.push(R(d)),o+=1}let r=(d,a,u)=>{let g=s[u],y=g?` class="md-align-${g}"`:"";return`<${d}${y}>${B(a)}</${d}>`},l=n.map((d,a)=>r("th",d,a)).join(""),c=i.map((d)=>`<tr>${n.map((a,u)=>r("td",d[u]??"",u)).join("")}</tr>`).join("");return[`<div class="md-table-wrap"><table class="md-table"><thead><tr>${l}</tr></thead><tbody>${c}</tbody></table></div>`,o]}function zt(t){return t.replace(/<\/?p>/g,"")}function Gt(t,e){let n=L(t[e]),s=n.indent,o=[],i=[],r=e;while(r<t.length){let g=t[r];if(!g.trim()){let b=r+1;while(b<t.length&&!t[b].trim())b+=1;if(b>=t.length)break;let v=t[b],k=L(v),C=x(/^\s*/.exec(v)[0]);if(k&&k.indent>=s||C>s+1){i.push(""),r+=1;continue}break}let y=L(g);if(y&&y.indent>=s){i.push(g),r+=1;continue}if(x(/^\s*/.exec(g)[0])>s){i.push(g),r+=1;continue}break}let l=null,c=s+2;for(let g of i){let y=L(g);if(y&&y.indent<=s+1){l={content:[y.content]},o.push(l),c=y.contentIndent;continue}if(!l)l={content:[]},o.push(l);l.content.push(ct(g,c))}let d=o.map((g)=>{let y=g.content.slice(),S=!1,b=!1,v=/^\[([ xX])\][ \t]+/.exec(y[0]??"");if(v)S=!0,b=v[1].toLowerCase()==="x",y[0]=y[0].slice(v[0].length);let k=zt(z(y));if(S)k=`<div class="md-li-body">${k}</div>`;return`<li class="${S?`md-li md-li-task${b?" md-li-done":""}`:"md-li"}">${S?`<input type="checkbox" class="md-task-box" disabled${b?" checked":""}>`:""}${k}</li>`}).join(""),a=n.ordered?"ol":"ul",u=n.ordered&&n.start!==1?` start="${n.start}"`:"";return[`<${a}${u} class="md-list">${d}</${a}>`,r]}function z(t){let e=[],n=0;while(n<t.length){let s=t[n];if(!s.trim()){n+=1;continue}let o=ot.exec(s);if(o){let c=o[1]??"",d=o[2]??"```",a=o[3]??"",u=[];n+=1;let g=new RegExp(`^\\s*${d[0]}{${d.length},}\\s*$`);while(n<t.length&&!g.test(t[n]))u.push(ct(t[n],c.length)),n+=1;if(n<t.length)n+=1;e.push(Yt(u.join(`
-`),a));continue}let i=it.exec(s);if(i){let c=i[1].length;e.push(`<h${c}>${B(i[2])}</h${c}>`),n+=1;continue}if(lt.test(s)){e.push("<hr>"),n+=1;continue}if(U.test(s)){let c=[];while(n<t.length){let d=t[n];if(!d.trim())break;let a=U.exec(d);if(a){c.push(a[1]),n+=1;continue}if(!st(d)){c.push(d),n+=1;continue}break}e.push(`<blockquote>${z(c)}</blockquote>`);continue}if(L(s)){let[c,d]=Gt(t,n);e.push(c),n=d;continue}if(rt(t,n)){let[c,d]=Ut(t,n);e.push(c),n=d;continue}let r=[],l=0;while(n<t.length){let c=t[n];if(!c.trim())break;if(r.length){if(/^ {0,3}=+[ \t]*$/.test(c)){l=1,n+=1;break}if(/^ {0,3}-+[ \t]*$/.test(c)){l=2,n+=1;break}if(st(c)||rt(t,n))break}r.push(c),n+=1}if(r.length){let c=B(r.join(`
-`));e.push(l?`<h${l}>${c}</h${l}>`:`<p>${c}</p>`)}}return e.join(`
-`)}function at(t){if(!t.trim())return"";let e=t.replace(/\r\n?/g,`
+    <script>var Xe={"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"};function h(e){return e.replace(/[&<>"']/g,(t)=>Xe[t]??t)}var D="async await break case catch class const continue debugger default delete do else export extends finally for from function get if import in instanceof let new of return set static super switch this throw try typeof var void while with yield true false null undefined".split(" "),ee=[...D,"any boolean never number object readonly string symbol unknown","interface type enum implements namespace declare abstract as satisfies keyof","public private protected infer is asserts override"].join(" ").split(" "),me="and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield".split(" "),te="if then else elif fi for while do done case esac function return export local echo".split(" "),Ze="select from where insert into values update set delete create table alter drop join left right inner outer on group by order having limit offset as and or not null primary key foreign references index distinct union all case when then else end".split(" "),Je={js:{keywords:D,line:["//"],block:!0},jsx:{keywords:D,line:["//"],block:!0},javascript:{keywords:D,line:["//"],block:!0},mjs:{keywords:D,line:["//"],block:!0},ts:{keywords:ee,line:["//"],block:!0},tsx:{keywords:ee,line:["//"],block:!0},typescript:{keywords:ee,line:["//"],block:!0},json:{keywords:["true","false","null"],line:[]},css:{keywords:[],line:[],block:!0},scss:{keywords:[],line:["//"],block:!0},py:{keywords:me,line:["#"]},python:{keywords:me,line:["#"]},sh:{keywords:te,line:["#"]},bash:{keywords:te,line:["#"]},zsh:{keywords:te,line:["#"]},yaml:{keywords:["true","false","null"],line:["#"]},yml:{keywords:["true","false","null"],line:["#"]},toml:{keywords:["true","false"],line:["#"]},sql:{keywords:Ze,line:["--"],block:!0},go:{keywords:"break case chan const continue default defer else fallthrough for func go goto if import interface map package range return select struct switch type var true false nil".split(" "),line:["//"],block:!0},rust:{keywords:"as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait true type unsafe use where while".split(" "),line:["//"],block:!0},java:{keywords:"abstract boolean break byte case catch char class const continue default do double else enum extends final finally float for if implements import instanceof int interface long new null package private protected public return short static super switch synchronized this throw throws try void volatile while true false".split(" "),line:["//"],block:!0},html:{keywords:[],line:[],kind:"markup"},xml:{keywords:[],line:[],kind:"markup"},svg:{keywords:[],line:[],kind:"markup"}};function b(e,t){return`<span class="tok-${e}">${h(t)}</span>`}function Qe(e){let t=/^(<\/?)([A-Za-z][\w:-]*)([\s\S]*?)(\/?>)$/.exec(e);if(!t)return b("tag",e);let n=t[1],s=t[2],i=t[3],r=t[4],o=h(n)+b("tag",s),l=0;while(l<i.length){let a=i[l];if(/\s/.test(a)||a==="/"){o+=h(a),l+=1;continue}if(a==='"'||a==="'"){let c=i.indexOf(a,l+1),f=c===-1?i.length:c+1;o+=b("string",i.slice(l,f)),l=f;continue}let d=/^[^\s=/"'<>]+/.exec(i.slice(l));if(d){o+=b("attr",d[0]),l+=d[0].length;continue}o+=h(a),l+=1}return o+h(r)}function et(e){let t="",n=0;while(n<e.length){if(e.startsWith("<!--",n)){let r=e.indexOf("-->",n+4),o=r===-1?e.length:r+3;t+=b("comment",e.slice(n,o)),n=o;continue}if(e[n]==="<"&&/[A-Za-z!?/]/.test(e[n+1]??"")){let r=e.indexOf(">",n),o=r===-1?e.length:r+1;t+=Qe(e.slice(n,o)),n=o;continue}let s=e.indexOf("<",n+1),i=s===-1?e.length:s;t+=h(e.slice(n,i)),n=i}return t}function tt(e,t){let n=Je[t.toLowerCase()];if(!n)return h(e);if(n.kind==="markup")return et(e);let s=n.quotes??['"',"'","`"],i=new Set(n.keywords),r="",o=0;while(o<e.length){if(n.block&&e.startsWith("/*",o)){let c=e.indexOf("*/",o+2),f=c===-1?e.length:c+2;r+=b("comment",e.slice(o,f)),o=f;continue}let l=-1;for(let c of n.line)if(e.startsWith(c,o)){if(l=e.indexOf(`
+`,o),l===-1)l=e.length;break}if(l!==-1){r+=b("comment",e.slice(o,l)),o=l;continue}let a=e[o];if(s.includes(a)){let c=a==="`",f=o+1;while(f<e.length){let g=e[f];if(g==="\\"){f+=2;continue}if(g===a){f+=1;break}if(g===`
+`&&!c)break;f+=1}r+=b("string",e.slice(o,f)),o=f;continue}let d=o>0?e[o-1]:"";if(/[0-9]/.test(a)&&!/[\w$]/.test(d)){let c=/^(?:0[xXbBoO][0-9a-fA-F_]+|\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?)[a-zA-Z%]*/.exec(e.slice(o));if(c){r+=b("number",c[0]),o+=c[0].length;continue}}if(/[A-Za-z_$]/.test(a)){let c=/^[A-Za-z_$][\w$]*/.exec(e.slice(o))[0],f=/^\s*\(/.test(e.slice(o+c.length));if(i.has(c))r+=b("keyword",c);else if(f)r+=b("fn",c);else if(c==="true"||c==="false"||c==="null"||c==="undefined")r+=b("number",c);else r+=h(c);o+=c.length;continue}r+=h(a),o+=1}return r}var he="\x00";function nt(e){let t=e,n="";while(/[.,;:!?]$/.test(t))n=t.slice(-1)+n,t=t.slice(0,-1);while(t.endsWith(")")&&(t.match(/\(/g)?.length??0)<(t.match(/\)/g)?.length??0))n=")"+n,t=t.slice(0,-1);return{href:t,trailing:n}}function ne(e,t,n){let s=n?` title="${h(n)}"`:"";return`<a href="${h(e)}"${s} target="_blank" rel="noopener noreferrer">${t}</a>`}function q(e){if(!e)return"";let t=[],n=(r)=>`${he}${t.push(r)-1}${he}`,s=e;s=s.replace(/\\([\\`*_{}[\]()#+\-.!~>|])/g,(r,o)=>n(h(o))),s=s.replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g,(r,o,l)=>{let a=l.length>2&&l.startsWith(" ")&&l.endsWith(" ")?l.slice(1,-1):l;return n(`<code class="md-inline-code">${h(a)}</code>`)}),s=s.replace(/!\[([^\]]*)\]\(\s*([^\s)]+?)(?:\s+["']([^"']*)["'])?\s*\)/g,(r,o,l,a)=>{let d=a?` title="${h(a)}"`:"";return n(`<img class="md-img" src="${h(l)}" alt="${h(o)}"${d} loading="lazy">`)}),s=s.replace(/\[([^\]]+)\]\(\s*([^\s)]+?)(?:\s+["']([^"']*)["'])?\s*\)/g,(r,o,l,a)=>n(ne(l,q(o),a))),s=s.replace(/<((?:https?:\/\/|mailto:)[^\s>]+)>/g,(r,o)=>n(ne(o,h(o.replace(/^mailto:/,""))))),s=s.replace(/(^|[\s(])((?:https?:\/\/|www\.)[^\s<>"'`]+)/g,(r,o,l)=>{let{href:a,trailing:d}=nt(l),c=a.startsWith("www.")?`https://${a}`:a;return`${o}${n(ne(c,h(a)))}${d}`}),s=h(s);let i=(r)=>r.replace(/\*\*\*(?=\S)([\s\S]*?\S)\*\*\*/g,"<em><strong>$1</strong></em>").replace(/___(?=\S)([\s\S]*?\S)___/g,"<em><strong>$1</strong></em>").replace(/\*\*(?=\S)([\s\S]*?\S)\*\*/g,"<strong>$1</strong>").replace(/(^|[^\w])__(?=\S)([\s\S]*?\S)__(?![\w])/g,"$1<strong>$2</strong>").replace(/\*(?=\S)([^*\n]*?\S)\*(?!\*)/g,"<em>$1</em>").replace(/(^|[^\w])_(?=\S)([^_\n]*?\S)_(?![\w])/g,"$1<em>$2</em>").replace(/~~(?=\S)([\s\S]*?\S)~~/g,"<del>$1</del>");return s=s.split(`
+`).map(i).join("<br>"),s.replace(/\u0000(\d+)\u0000/g,(r,o)=>t[Number(o)]??"")}var ve=/^(\s*)(`{3,}|~{3,})[ \t]*([^\s`~]*)[ \t]*$/,we=/^ {0,3}(#{1,6})[ \t]+(.*?)[ \t]*#*[ \t]*$/,be=/^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$/,se=/^ {0,3}>[ \t]?(.*)$/,st=/^(\s*)([-*+])([ \t]+)(.*)$/,ot=/^(\s*)(\d{1,9})([.)])([ \t]+)(.*)$/;function M(e){let t=0;for(let n of e)t+=n==="\t"?4:1;return t}function x(e){let t=st.exec(e);if(t){let s=M(t[1]);return{indent:s,contentIndent:s+1+M(t[3]),ordered:!1,start:1,content:t[4]}}let n=ot.exec(e);if(n){let s=M(n[1]);return{indent:s,contentIndent:s+n[2].length+1+M(n[4]),ordered:!0,start:Number(n[2]),content:n[5]}}return null}function ye(e,t){let n=0,s=0;while(s<e.length&&n<t){let i=e[s];if(i===" ")n+=1,s+=1;else if(i==="\t")n+=4,s+=1;else break}return e.slice(s)}function pe(e){return ve.test(e)||we.test(e)||be.test(e)||se.test(e)||x(e)!==null}function rt(e,t){let n=t.trim().toLowerCase(),s=tt(e,n);return`<div class="md-code-block"><div class="md-code-head"><span class="md-code-lang">${h(n||"text")}</span><button type="button" class="md-code-copy" data-copy>Copy</button></div><pre class="md-code"><code>${s}</code></pre></div>`}function j(e){let t=e.trim();if(t.startsWith("|"))t=t.slice(1);if(t.endsWith("|"))t=t.slice(0,-1);return t.split("|").map((n)=>n.trim())}function it(e){if(!e.includes("|"))return!1;let t=j(e);return t.length>0&&t.every((n)=>/^:?-{1,}:?$/.test(n))}function ge(e,t){let n=e[t],s=e[t+1];return Boolean(n&&s&&n.includes("|")&&it(s))}function lt(e,t){let n=j(e[t]),s=j(e[t+1]).map((d)=>{let c=d.startsWith(":"),f=d.endsWith(":");return c&&f?"center":f?"right":c?"left":""}),i=t+2,r=[];while(i<e.length){let d=e[i];if(!d.trim()||!d.includes("|"))break;r.push(j(d)),i+=1}let o=(d,c,f)=>{let g=s[f],v=g?` class="md-align-${g}"`:"";return`<${d}${v}>${q(c)}</${d}>`},l=n.map((d,c)=>o("th",d,c)).join(""),a=r.map((d)=>`<tr>${n.map((c,f)=>o("td",d[f]??"",f)).join("")}</tr>`).join("");return[`<div class="md-table-wrap"><table class="md-table"><thead><tr>${l}</tr></thead><tbody>${a}</tbody></table></div>`,i]}function at(e){return e.replace(/<\/?p>/g,"")}function dt(e,t){let n=x(e[t]),s=n.indent,i=[],r=[],o=t;while(o<e.length){let g=e[o];if(!g.trim()){let w=o+1;while(w<e.length&&!e[w].trim())w+=1;if(w>=e.length)break;let T=e[w],y=x(T),K=M(/^\s*/.exec(T)[0]);if(y&&y.indent>=s||K>s+1){r.push(""),o+=1;continue}break}let v=x(g);if(v&&v.indent>=s){r.push(g),o+=1;continue}if(M(/^\s*/.exec(g)[0])>s){r.push(g),o+=1;continue}break}let l=null,a=s+2;for(let g of r){let v=x(g);if(v&&v.indent<=s+1){l={content:[v.content]},i.push(l),a=v.contentIndent;continue}if(!l)l={content:[]},i.push(l);l.content.push(ye(g,a))}let d=i.map((g)=>{let v=g.content.slice(),S=!1,w=!1,T=/^\[([ xX])\][ \t]+/.exec(v[0]??"");if(T)S=!0,w=T[1].toLowerCase()==="x",v[0]=v[0].slice(T[0].length);let y=at(oe(v));if(S)y=`<div class="md-li-body">${y}</div>`;return`<li class="${S?`md-li md-li-task${w?" md-li-done":""}`:"md-li"}">${S?`<input type="checkbox" class="md-task-box" disabled${w?" checked":""}>`:""}${y}</li>`}).join(""),c=n.ordered?"ol":"ul",f=n.ordered&&n.start!==1?` start="${n.start}"`:"";return[`<${c}${f} class="md-list">${d}</${c}>`,o]}function oe(e){let t=[],n=0;while(n<e.length){let s=e[n];if(!s.trim()){n+=1;continue}let i=ve.exec(s);if(i){let a=i[1]??"",d=i[2]??"```",c=i[3]??"",f=[];n+=1;let g=new RegExp(`^\\s*${d[0]}{${d.length},}\\s*$`);while(n<e.length&&!g.test(e[n]))f.push(ye(e[n],a.length)),n+=1;if(n<e.length)n+=1;t.push(rt(f.join(`
+`),c));continue}let r=we.exec(s);if(r){let a=r[1].length;t.push(`<h${a}>${q(r[2])}</h${a}>`),n+=1;continue}if(be.test(s)){t.push("<hr>"),n+=1;continue}if(se.test(s)){let a=[];while(n<e.length){let d=e[n];if(!d.trim())break;let c=se.exec(d);if(c){a.push(c[1]),n+=1;continue}if(!pe(d)){a.push(d),n+=1;continue}break}t.push(`<blockquote>${oe(a)}</blockquote>`);continue}if(x(s)){let[a,d]=dt(e,n);t.push(a),n=d;continue}if(ge(e,n)){let[a,d]=lt(e,n);t.push(a),n=d;continue}let o=[],l=0;while(n<e.length){let a=e[n];if(!a.trim())break;if(o.length){if(/^ {0,3}=+[ \t]*$/.test(a)){l=1,n+=1;break}if(/^ {0,3}-+[ \t]*$/.test(a)){l=2,n+=1;break}if(pe(a)||ge(e,n))break}o.push(a),n+=1}if(o.length){let a=q(o.join(`
+`));t.push(l?`<h${l}>${a}</h${l}>`:`<p>${a}</p>`)}}return t.join(`
+`)}function ke(e){if(!e.trim())return"";let t=e.replace(/\r\n?/g,`
 `).replace(/\u0000/g,"").split(`
-`);return z(e)}var Zt=["# Welcome to Notes","","A small, **Markdown**-first notes app that runs entirely in your browser. Everything is saved locally as you type.","","## Try it out","","- Type in the middle pane and the preview keeps up in real time","- Switch themes with **Auto / Light / Dark** in the sidebar","- Press `Alt+N` for a new note, `⌘K` to search","- Use the formatting bar, or just write Markdown","","> Notes live in `localStorage`, so reloading the page never loses your work.","","### Checklists","","1. Live Markdown preview","2. Dark, light and system themes","3. Write something of your own","","- [x] Ship a single self-contained HTML file","- [x] Keep the source small and dependency-free","- [ ] Take a note","","### Code","","```ts","type Note = { id: string; body: string; updatedAt: number };","","export function isFresh(note: Note, now = Date.now()): boolean {","  return now - note.updatedAt < 5_000;","}","```","","### Shortcuts","","| Shortcut | Action |","| :-- | :-- |","| `Alt+N` | New note |","| `⌘K` | Search |","| `⌘B` | Bold |","| `⌘I` | Italic |","","---","","That's it. Delete this note whenever you like."].join(`
-`);function dt(){if(typeof crypto<"u"&&"randomUUID"in crypto)return crypto.randomUUID();return`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`}function Jt(t){if(!t||typeof t!=="object")return!1;let e=t;return typeof e.id==="string"&&typeof e.body==="string"}function Vt(t){let e=Number.isFinite(t.createdAt)?t.createdAt:Date.now();return{id:t.id,body:t.body,createdAt:e,updatedAt:Number.isFinite(t.updatedAt)?t.updatedAt:e,deletedAt:typeof t.deletedAt==="number"?t.deletedAt:null}}function Qt(){let t=Date.now();return{id:dt(),body:Zt,createdAt:t,updatedAt:t,deletedAt:null}}class G{notes=[];selectedId=null;folder="notes";saveTimer=null;constructor(){this.load()}load(){let t=null;try{t=localStorage.getItem("notes.v1")}catch{t=null}if(t===null){this.seed();return}try{let e=JSON.parse(t),n=Array.isArray(e.notes)?e.notes.filter(Jt).map(Vt):[];this.notes=n,this.folder=e.folder==="trash"?"trash":"notes";let s=typeof e.selectedId==="string"?e.selectedId:null;this.selectedId=this.notes.some((o)=>o.id===s&&this.inFolder(o))?s:null,this.ensureSelection()}catch{this.seed()}}seed(){let t=Qt();this.notes=[t],this.selectedId=t.id,this.folder="notes"}inFolder(t){return this.folder==="trash"?t.deletedAt!==null:t.deletedAt===null}visible(t=""){let e=t.trim().toLowerCase(),n=this.notes.filter((o)=>this.inFolder(o));return(e?n.filter((o)=>o.body.toLowerCase().includes(e)):n).sort((o,i)=>{let r=this.folder==="trash"?o.deletedAt??0:o.updatedAt;return(this.folder==="trash"?i.deletedAt??0:i.updatedAt)-r})}active(){if(!this.selectedId)return null;return this.notes.find((t)=>t.id===this.selectedId)??null}counts(){let t=0,e=0;for(let n of this.notes)if(n.deletedAt===null)t+=1;else e+=1;return{notes:t,trash:e}}ensureSelection(){let t=this.visible();if(this.selectedId&&t.some((e)=>e.id===this.selectedId))return;this.selectedId=t[0]?.id??null}select(t){this.selectedId=t,this.ensureSelection(),this.save()}setFolder(t){if(this.folder===t)return;this.folder=t,this.ensureSelection(),this.save()}create(){let t=Date.now(),e={id:dt(),body:"",createdAt:t,updatedAt:t,deletedAt:null};return this.notes.push(e),this.folder="notes",this.selectedId=e.id,this.save(),e}updateBody(t,e){let n=this.notes.find((s)=>s.id===t);if(!n||n.body===e)return;n.body=e,n.updatedAt=Date.now(),this.save()}trash(t){let e=this.notes.find((n)=>n.id===t);if(!e||e.deletedAt!==null)return;e.deletedAt=Date.now(),this.ensureSelection(),this.save()}restore(t){let e=this.notes.find((n)=>n.id===t);if(!e)return;e.deletedAt=null,e.updatedAt=Date.now(),this.folder="notes",this.selectedId=e.id,this.save()}destroy(t){if(this.notes=this.notes.filter((e)=>e.id!==t),this.selectedId===t)this.selectedId=null;this.ensureSelection(),this.save()}emptyTrash(){this.notes=this.notes.filter((t)=>t.deletedAt===null),this.ensureSelection(),this.save()}snapshot(){let t={notes:this.notes,selectedId:this.selectedId,folder:this.folder};return JSON.stringify(t)}save(){if(this.saveTimer!==null)return;this.saveTimer=setTimeout(()=>{this.saveTimer=null,this.flush()},250)}flush(){if(this.saveTimer!==null)clearTimeout(this.saveTimer),this.saveTimer=null;try{localStorage.setItem("notes.v1",this.snapshot())}catch{}}}var ut=window.matchMedia("(prefers-color-scheme: dark)"),F="system";function Xt(){try{let t=localStorage.getItem("notes.theme");if(t==="light"||t==="dark"||t==="system")return t}catch{}return"system"}function te(t=F){if(t==="system")return ut.matches?"dark":"light";return t}function ee(t){let e=te(t),n=document.documentElement;n.dataset.theme=e,n.style.colorScheme=e}function O(t,e){F=t,ee(t);try{localStorage.setItem("notes.theme",t)}catch{}e?.(t)}function ht(t){O(Xt(),t),ut.addEventListener("change",()=>{if(F==="system")O("system",t)})}function ft(){return F}function p(t){let e=document.querySelector(t);if(!e)throw Error(`Missing element: ${t}`);return e}var f=p("#editor"),N=p("#preview"),gt=p("#preview-title"),yt=p("#note-list"),ne=p("#list-title"),bt=p("#note-stamp"),se=p("#word-count"),E=p("#search"),re=p("#backdrop"),wt=p("#folders"),oe=p("#count-notes"),ie=p("#count-trash"),kt=p("#empty-trash"),le=p("#trash-banner"),vt=p("#md-toolbar"),Et=p("#export-note"),Q=p("#trash-note"),ce=Array.from(vt.querySelectorAll("button")),Tt=Array.from(document.querySelectorAll("[data-theme-mode]")),St=Array.from(document.querySelectorAll("[data-view]")),h=new G,A="",Z=new Intl.RelativeTimeFormat(void 0,{numeric:"auto"});function j(t){if(!t)return"New Note";return(t.body.split(`
-`).find((s)=>s.trim())??"").replace(/[*`~]/g,"").trim().replace(/^(#{1,6}|>|[-*+]|\d+[.)])\s+/,"").trim()||"New Note"}function ae(t){return t.body.split(`
-`).slice(1).join(" ").replace(/```[\s\S]*?```/g," ").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/[#>*_`~|]/g," ").replace(/\s+/g," ").trim().slice(0,110)||"No additional text"}function xt(t){let e=Date.now()-t,n=60000,s=3600000,o=86400000;if(e<45000)return"Just now";if(e<3600000)return Z.format(-Math.round(e/60000),"minute");if(e<86400000)return Z.format(-Math.round(e/3600000),"hour");if(e<604800000)return Z.format(-Math.round(e/86400000),"day");let i=new Date(t),r=i.getFullYear()===new Date().getFullYear();return i.toLocaleDateString(void 0,{month:"short",day:"numeric",...r?{}:{year:"numeric"}})}function Lt(t){return new Date(t).toLocaleString(void 0,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}function de(t){return t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60)||"note"}function $t(){let t=h.counts();oe.textContent=String(t.notes),ie.textContent=String(t.trash),ne.textContent=h.folder==="trash"?"Recently Deleted":"All Notes",kt.hidden=h.folder!=="trash"||t.trash===0;for(let n of Array.from(wt.querySelectorAll("[data-folder]")))n.setAttribute("aria-current",String(n.dataset.folder===h.folder));let e=h.active();gt.textContent=e?j(e):"",tt(),Dt()}function I(){let t=h.visible(A),e=document.createDocumentFragment();if(t.length===0){let n=document.createElement("div");n.className="list-empty",n.textContent=A.trim()?`No notes match “${A.trim()}”.`:h.folder==="trash"?"Recently Deleted is empty.":"No notes yet. Press Alt+N to create one.",e.appendChild(n)}else for(let n of t){let s=document.createElement("button");s.type="button",s.className="note-row",s.dataset.id=n.id,s.setAttribute("role","option"),s.setAttribute("aria-selected",String(n.id===h.selectedId));let o=h.folder==="trash"?n.deletedAt??n.updatedAt:n.updatedAt;s.innerHTML=`<span class="note-title">${m(j(n))}</span><span class="note-meta">${m(xt(o))} · ${m(ae(n))}</span>`,e.appendChild(s)}yt.replaceChildren(e)}function At(){let t=h.active(),e=h.folder==="trash",n=t!==null;f.readOnly=!n||e,f.placeholder=n?"Start writing. Markdown is supported.":e?"No deleted notes.":"Select a note, or press Alt+N to start a new one.";let s=t?t.body:"";if(f.value!==s)f.value=s;le.hidden=!(n&&e);for(let o of ce)o.disabled=!n||e;Et.disabled=!n,Q.disabled=!n||e,Q.hidden=e,bt.textContent=t?e?`Deleted ${xt(t.deletedAt??t.updatedAt)}`:`Edited ${Lt(t.updatedAt)}`:"",Mt()}function X(){let t=h.active(),e=t?at(t.body):"";if(e){N.innerHTML=e;return}let n=!t?h.folder==="trash"?"Recently Deleted is empty.":"Select a note to preview it.":"Nothing to preview yet — start typing on the left.";N.innerHTML=`<div class="pane-empty">${m(n)}</div>`}function T(){$t(),I(),At(),X()}var J=0,V=null;function ue(){if(J)return;J=requestAnimationFrame(()=>{J=0,X()})}function he(){if(V!==null)return;V=setTimeout(()=>{V=null,I()},140)}function Mt(){let t=f.value.trim(),e=t?t.split(/\s+/).length:0;se.textContent=`${e.toLocaleString()} ${e===1?"word":"words"}`}function M(t,e,n=e){f.value=t,f.focus(),f.setSelectionRange(e,n),f.dispatchEvent(new Event("input",{bubbles:!0}))}function K(t,e,n){let{selectionStart:s,selectionEnd:o,value:i}=f,r=i.slice(s,o)||n,l=i.slice(0,s)+t+r+e+i.slice(o);M(l,s+t.length,s+t.length+r.length)}function D(t){let{selectionStart:e,selectionEnd:n,value:s}=f,o=s.lastIndexOf(`
-`,Math.max(0,e-1))+1,i=s.indexOf(`
-`,n);if(i===-1)i=s.length;let l=s.slice(o,i).split(`
-`),c=l.every((u)=>!u.trim()||u.startsWith(t)),d=l.map((u)=>{if(!u.trim())return u;return c?u.slice(t.length):t+u}).join(`
-`),a=s.slice(0,o)+d+s.slice(i);M(a,o,o+d.length)}function fe(){let{selectionStart:t,selectionEnd:e,value:n}=f,o=n.slice(t,e)||"text",i=`[${o}](url)`,r=n.slice(0,t)+i+n.slice(e),l=t+o.length+3;M(r,l,l+3)}function Nt(t){if(f.readOnly)return;switch(t){case"bold":K("**","**","bold text");break;case"italic":K("*","*","italic text");break;case"strike":K("~~","~~","strikethrough");break;case"code":K("`","`","code");break;case"heading":D("## ");break;case"quote":D("> ");break;case"list":D("- ");break;case"ordered":D("1. ");break;case"task":D("- [ ] ");break;case"link":fe();break;default:break}}f.addEventListener("input",()=>{let t=h.active();if(!t||h.folder==="trash")return;h.updateBody(t.id,f.value),bt.textContent=`Edited ${Lt(t.updatedAt)}`,gt.textContent=j(t),Mt(),ue(),he()});f.addEventListener("keydown",(t)=>{if(t.key==="Tab"&&!f.readOnly){t.preventDefault();let{selectionStart:k,selectionEnd:C,value:W}=f,It=W.slice(0,k)+"  "+W.slice(C);M(It,k+2);return}if(t.key!=="Enter"||t.shiftKey||t.metaKey||t.ctrlKey||t.altKey)return;if(f.readOnly)return;let{selectionStart:e,selectionEnd:n,value:s}=f;if(e!==n)return;let o=s.lastIndexOf(`
-`,e-1)+1,i=s.slice(o,e);if((s.slice(0,e).match(/^\s*(?:```|~~~)/gm)?.length??0)%2===1)return;let l=/^(\s*)(?:([-*+])\s+(\[[ xX]\]\s+)?|(\d+)([.)])\s+)/.exec(i);if(!l)return;let c=l[1]??"",d=l[2],a=l[3],u=l[4],g=l[5],y=i.slice(l[0].length);if(t.preventDefault(),!y.trim()){let k=s.slice(0,o)+s.slice(e);M(k,o);return}let b=`
-${u?`${c}${Number(u)+1}${g??"."} `:`${c}${d} ${a?"[ ] ":""}`}`,v=s.slice(0,e)+b+s.slice(n);M(v,e+b.length)});vt.addEventListener("click",(t)=>{let e=t.target.closest("[data-md]");if(!e||e.disabled||!e.dataset.md)return;f.focus(),Nt(e.dataset.md)});function H(){delete document.body.dataset.drawer}yt.addEventListener("click",(t)=>{let e=t.target.closest(".note-row");if(!e?.dataset.id)return;h.select(e.dataset.id),$t(),I(),At(),X(),f.focus(),H()});wt.addEventListener("click",(t)=>{let n=t.target.closest("[data-folder]")?.dataset.folder;if(n!=="notes"&&n!=="trash")return;h.setFolder(n),T(),f.focus(),H()});E.addEventListener("input",()=>{A=E.value,I()});E.addEventListener("keydown",(t)=>{if(t.key!=="Escape")return;t.preventDefault(),E.value="",A="",I(),E.blur()});function Ht(){h.create(),A="",E.value="",T(),H(),f.focus()}for(let t of["#new-note","#new-note-side","#new-note-mobile"])p(t).addEventListener("click",Ht);kt.addEventListener("click",()=>{let{trash:t}=h.counts();if(t===0)return;if(!window.confirm("Delete all notes in Recently Deleted? This cannot be undone."))return;h.emptyTrash(),T()});Q.addEventListener("click",()=>{let t=h.active();if(!t)return;h.trash(t.id),T(),f.focus()});p("#restore-note").addEventListener("click",()=>{let t=h.active();if(!t)return;h.restore(t.id),T(),f.focus()});p("#delete-forever").addEventListener("click",()=>{let t=h.active();if(!t)return;if(!window.confirm("Delete this note permanently? This cannot be undone."))return;h.destroy(t.id),T()});Et.addEventListener("click",()=>{let t=h.active();if(!t)return;let e=new Blob([t.body],{type:"text/markdown;charset=utf-8"}),n=URL.createObjectURL(e),s=document.createElement("a");s.href=n,s.download=`${de(j(t))}.md`,document.body.appendChild(s),s.click(),s.remove(),setTimeout(()=>URL.revokeObjectURL(n),1000)});N.addEventListener("click",async(t)=>{let e=t.target.closest("[data-copy]");if(!e)return;let n=e.closest(".md-code-block")?.querySelector("code");if(!n)return;try{await navigator.clipboard.writeText(n.textContent??""),e.textContent="Copied"}catch{e.textContent="Failed"}setTimeout(()=>{e.textContent="Copy"},1400)});var mt=0;function _t(t,e){let n=Date.now();if(n-mt<70)return;let s=t.scrollHeight-t.clientHeight,o=e.scrollHeight-e.clientHeight;if(s<=0||o<=0)return;mt=n,e.scrollTop=t.scrollTop/s*o}f.addEventListener("scroll",()=>_t(f,N),{passive:!0});N.addEventListener("scroll",()=>_t(N,f),{passive:!0});function tt(){let t=ft();for(let e of Tt)e.setAttribute("aria-pressed",String(e.dataset.themeMode===t))}function Dt(){let t=document.body.dataset.view??"edit";for(let e of St)e.setAttribute("aria-pressed",String((e.dataset.view??"edit")===t))}for(let t of Tt)t.addEventListener("click",()=>{let e=t.dataset.themeMode;if(e==="system"||e==="light"||e==="dark")O(e,tt)});ht(()=>tt());for(let t of St)t.addEventListener("click",()=>{let e=t.dataset.view==="preview"?"preview":"edit";document.body.dataset.view=e,Dt()});p("#toggle-sidebar").addEventListener("click",()=>{document.body.dataset.drawer="sidebar"});p("#toggle-list").addEventListener("click",()=>{document.body.dataset.drawer="list"});re.addEventListener("click",H);document.addEventListener("keydown",(t)=>{let e=t.metaKey||t.ctrlKey,n=t.key.toLowerCase();if(e&&n==="k"){t.preventDefault(),H(),E.focus(),E.select();return}if(t.altKey&&n==="n"&&!e){t.preventDefault(),Ht();return}if(document.activeElement===f&&e&&(n==="b"||n==="i")){t.preventDefault(),Nt(n==="b"?"bold":"italic");return}if(t.key==="Escape")H()});window.addEventListener("pagehide",()=>h.flush());window.addEventListener("beforeunload",()=>h.flush());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")h.flush()});document.body.dataset.view="edit";var me=/Mac|iPhone|iPad/.test(navigator.userAgent),pt=document.querySelector(".search-field kbd");if(pt)pt.textContent=me?"⌘K":"Ctrl K";T();
+`);return oe(t)}var P="all",E="trash";var ct=["# Welcome to Notes","","A small, **Markdown**-first notes app that runs entirely in your browser. Everything is saved locally as you type.","","## Try it out","","- Type in the middle pane and the preview keeps up in real time","- Switch themes with **Auto / Light / Dark** in the sidebar","- Press `Alt+N` for a new note, `⌘K` to search","- Create folders with **+** next to *Folders*, then move notes with the folder button above the editor","","> Notes live in `localStorage`, so reloading the page never loses your work.","","### Checklists","","1. Live Markdown preview","2. Dark, light and system themes","3. Write something of your own","","- [x] Ship a single self-contained HTML file","- [x] Keep the source small and dependency-free","- [ ] Take a note","","### Code","","```ts","type Note = { id: string; folderId: string; body: string };","","export function isFresh(note: Note, now = Date.now()): boolean {","  return now - note.updatedAt < 5_000;","}","```","","### Shortcuts","","| Shortcut | Action |","| :-- | :-- |","| `Alt+N` | New note |","| `⌘K` | Search |","| `⌘B` | Bold |","| `⌘I` | Italic |","","---","","That's it. Delete this note whenever you like."].join(`
+`);function N(){if(typeof crypto<"u"&&"randomUUID"in crypto)return crypto.randomUUID();return`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`}function ut(e){if(!e||typeof e!=="object")return!1;let t=e;return typeof t.id==="string"&&typeof t.name==="string"}function ft(e){if(!e||typeof e!=="object")return!1;let t=e;return typeof t.id==="string"&&typeof t.body==="string"}function mt(e){return{id:e.id,name:e.name.trim()||"Untitled Folder",createdAt:Number.isFinite(e.createdAt)?e.createdAt:Date.now()}}function ht(e,t){let n=Number.isFinite(e.createdAt)?e.createdAt:Date.now();return{id:e.id,folderId:typeof e.folderId==="string"?e.folderId:t,body:e.body,createdAt:n,updatedAt:Number.isFinite(e.updatedAt)?e.updatedAt:n,deletedAt:typeof e.deletedAt==="number"?e.deletedAt:null}}class re{notes=[];folders=[];selectedId=null;view="all";saveTimer=null;constructor(){this.load()}load(){let e=null;try{e=localStorage.getItem("notes.v1")}catch{e=null}if(e===null){this.seed();return}try{let t=JSON.parse(e),n=Array.isArray(t.folders)?t.folders.filter(ut).map(mt):[],s=Array.isArray(t.notes)?t.notes.filter(ft):[];if(n.length===0)n.push({id:N(),name:"Notes",createdAt:Date.now()});let i=n[0].id,r=s.map((d)=>ht(d,i));for(let d of r)if(!n.some((c)=>c.id===d.folderId))d.folderId=i;this.folders=n,this.notes=r;let o=t.folder==="trash"?"trash":"all",l=typeof t.view==="string"?t.view:o;this.view=this.isValidView(l)?l:"all";let a=typeof t.selectedId==="string"?t.selectedId:null;this.selectedId=a&&this.notes.some((d)=>d.id===a&&this.inView(d))?a:null,this.ensureSelection()}catch{this.seed()}}seed(){let e=Date.now(),t={id:N(),name:"Notes",createdAt:e},n={id:N(),folderId:t.id,body:ct,createdAt:e,updatedAt:e,deletedAt:null};this.folders=[t],this.notes=[n],this.selectedId=n.id,this.view="all"}isValidView(e){return e==="all"||e==="trash"||this.folders.some((t)=>t.id===e)}currentFolderId(){if(this.view==="all"||this.view==="trash")return null;return this.view}folderName(e){return this.folders.find((t)=>t.id===e)?.name??"Notes"}inView(e){if(this.view==="trash")return e.deletedAt!==null;if(e.deletedAt!==null)return!1;if(this.view==="all")return!0;return e.folderId===this.view}visible(e=""){let t=e.trim().toLowerCase(),n=t.length>0,s=this.notes.filter((r)=>{if(this.view==="trash")return r.deletedAt!==null;if(r.deletedAt!==null)return!1;if(n||this.view==="all")return!0;return r.folderId===this.view});return(n?s.filter((r)=>r.body.toLowerCase().includes(t)):s).sort((r,o)=>{let l=this.view==="trash"?r.deletedAt??0:r.updatedAt;return(this.view==="trash"?o.deletedAt??0:o.updatedAt)-l})}active(){if(!this.selectedId)return null;return this.notes.find((e)=>e.id===this.selectedId)??null}counts(){let e=0,t=0;for(let n of this.notes)if(n.deletedAt===null)e+=1;else t+=1;return{notes:e,trash:t}}folderCounts(){let e={};for(let t of this.folders)e[t.id]=0;for(let t of this.notes){if(t.deletedAt!==null)continue;e[t.folderId]=(e[t.folderId]??0)+1}return e}ensureSelection(){let e=this.visible();if(this.selectedId&&e.some((t)=>t.id===this.selectedId))return;this.selectedId=e[0]?.id??null}select(e){this.selectedId=e,this.ensureSelection(),this.save()}setView(e){if(!this.isValidView(e)||this.view===e)return;this.view=e,this.ensureSelection(),this.save()}create(){let e=this.currentFolderId()??this.folders[0].id,t=Date.now(),n={id:N(),folderId:e,body:"",createdAt:t,updatedAt:t,deletedAt:null};if(this.notes.push(n),this.selectedId=n.id,this.view==="trash")this.view=e;return this.save(),n}updateBody(e,t){let n=this.notes.find((s)=>s.id===e);if(!n||n.body===t)return;n.body=t,n.updatedAt=Date.now(),this.save()}trash(e){let t=this.notes.find((n)=>n.id===e);if(!t||t.deletedAt!==null)return;t.deletedAt=Date.now(),this.ensureSelection(),this.save()}restore(e){let t=this.notes.find((n)=>n.id===e);if(!t)return;t.deletedAt=null,t.updatedAt=Date.now(),this.view=this.folders.some((n)=>n.id===t.folderId)?t.folderId:this.folders[0].id,this.selectedId=t.id,this.save()}destroy(e){if(this.notes=this.notes.filter((t)=>t.id!==e),this.selectedId===e)this.selectedId=null;this.ensureSelection(),this.save()}emptyTrash(){this.notes=this.notes.filter((e)=>e.deletedAt===null),this.ensureSelection(),this.save()}uniqueFolderName(e,t){let n=e.trim().slice(0,40)||"New Folder",s=n,i=2;while(this.folders.some((r)=>r.id!==t&&r.name===s))s=`${n} ${i}`,i+=1;return s}createFolder(e){let t={id:N(),name:this.uniqueFolderName(e),createdAt:Date.now()};return this.folders.push(t),this.view=t.id,this.selectedId=null,this.ensureSelection(),this.save(),t}renameFolder(e,t){let n=this.folders.find((i)=>i.id===e);if(!n)return;let s=t.trim().slice(0,40);if(!s||s===n.name)return;n.name=this.uniqueFolderName(s,e),this.save()}deleteFolder(e){if(!this.folders.some((n)=>n.id===e))return;let t=Date.now();for(let n of this.notes)if(n.folderId===e&&n.deletedAt===null)n.deletedAt=t;if(this.folders=this.folders.filter((n)=>n.id!==e),this.folders.length===0)this.folders.push({id:N(),name:"Notes",createdAt:t});if(this.view===e)this.view="all";this.ensureSelection(),this.save()}moveNote(e,t){let n=this.notes.find((s)=>s.id===e);if(!n||n.folderId===t)return;if(!this.folders.some((s)=>s.id===t))return;n.folderId=t,n.updatedAt=Date.now(),this.view=t,this.selectedId=n.id,this.save()}snapshot(){let e={version:2,notes:this.notes,folders:this.folders,selectedId:this.selectedId,view:this.view};return JSON.stringify(e)}save(){if(this.saveTimer!==null)return;this.saveTimer=setTimeout(()=>{this.saveTimer=null,this.flush()},250)}flush(){if(this.saveTimer!==null)clearTimeout(this.saveTimer),this.saveTimer=null;try{localStorage.setItem("notes.v1",this.snapshot())}catch{}}}var Ee=window.matchMedia("(prefers-color-scheme: dark)"),U="system";function pt(){try{let e=localStorage.getItem("notes.theme");if(e==="light"||e==="dark"||e==="system")return e}catch{}return"system"}function gt(e=U){if(e==="system")return Ee.matches?"dark":"light";return e}function vt(e){let t=gt(e),n=document.documentElement;n.dataset.theme=t,n.style.colorScheme=t}function Y(e,t){U=e,vt(e);try{localStorage.setItem("notes.theme",e)}catch{}t?.(e)}function Le(e){Y(pt(),e),Ee.addEventListener("change",()=>{if(U==="system")Y("system",e)})}function Te(){return U}function p(e){let t=document.querySelector(e);if(!t)throw Error(`Missing element: ${e}`);return t}var m=p("#editor"),_=p("#preview"),xe=p("#preview-title"),Ne=p("#note-list"),wt=p("#list-title"),$e=p("#note-stamp"),bt=p("#word-count"),L=p("#search"),yt=p("#backdrop"),B=p("#folders"),Ie=p("#empty-trash"),kt=p("#trash-banner"),_e=p("#md-toolbar"),He=p("#export-note"),ce=p("#trash-note"),G=p("#move-note"),W=p("#move-popover"),Fe=p("#move-folders"),Et=Array.from(_e.querySelectorAll("button")),Ce=Array.from(document.querySelectorAll("[data-theme-mode]")),De=Array.from(document.querySelectorAll("[data-view]")),u=new re,A="",H=null,F=!1,X='<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.4A1.4 1.4 0 0 1 4.4 5h3l1.4 1.8h6.8A1.4 1.4 0 0 1 17 8.2v6.4a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 14.6z"/></svg>',Re='<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 6.2h11M8.2 6.2V4.6h3.6v1.6M6.2 6.2l.6 9.2h6.4l.6-9.2"/></svg>',Lt='<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>',Tt='<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.4 3.9l3.7 3.7M4 16l.9-3.6 7.9-7.9a1 1 0 0 1 1.4 0l1.3 1.3a1 1 0 0 1 0 1.4l-7.9 7.9z"/></svg>',At='<svg class="icon check" viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>',ie=new Intl.RelativeTimeFormat(void 0,{numeric:"auto"});function Z(e){if(!e)return"New Note";return(e.body.split(`
+`).find((s)=>s.trim())??"").replace(/[*`~]/g,"").trim().replace(/^(#{1,6}|>|[-*+]|\d+[.)])\s+/,"").trim()||"New Note"}function St(e){return e.body.split(`
+`).slice(1).join(" ").replace(/```[\s\S]*?```/g," ").replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/[#>*_`~|]/g," ").replace(/\s+/g," ").trim().slice(0,110)||"No additional text"}function Be(e){let t=Date.now()-e,n=60000,s=3600000,i=86400000;if(t<45000)return"Just now";if(t<3600000)return ie.format(-Math.round(t/60000),"minute");if(t<86400000)return ie.format(-Math.round(t/3600000),"hour");if(t<604800000)return ie.format(-Math.round(t/86400000),"day");let r=new Date(e),o=r.getFullYear()===new Date().getFullYear();return r.toLocaleDateString(void 0,{month:"short",day:"numeric",...o?{}:{year:"numeric"}})}function We(e){return new Date(e).toLocaleString(void 0,{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}function Mt(e){return e.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,60)||"note"}function Oe(){let e=u.counts();wt.textContent=u.view===E?"Recently Deleted":u.view===P?"All Notes":u.folderName(u.view),Ie.hidden=u.view!==E||e.trash===0;let t=u.active();xe.textContent=t?Z(t):"",fe(),ze()}function le(e,t,n){let s=document.createElement("div");s.className="folder-row";let i=document.createElement("button");if(i.type="button",i.className="folder",i.dataset.folder=e.id,i.setAttribute("aria-current",String(u.view===e.id)),i.innerHTML=`${n}<span class="folder-name">${h(e.name)}</span><span class="count">${t}</span>`,s.appendChild(i),e.id!==P&&e.id!==E){let r=document.createElement("div");r.className="folder-actions";let o=document.createElement("button");o.type="button",o.className="folder-action",o.dataset.renameFolder=e.id,o.title="Rename folder",o.setAttribute("aria-label",`Rename ${e.name}`),o.innerHTML=Tt;let l=document.createElement("button");l.type="button",l.className="folder-action danger",l.dataset.deleteFolder=e.id,l.title="Delete folder",l.setAttribute("aria-label",`Delete ${e.name}`),l.innerHTML=Re,r.append(o,l),s.appendChild(r)}return s}function Ae(e,t){let n=document.createElement("div");n.className="folder-row folder-row-editing";let s=document.createElement("span");s.className="folder-glyph",s.innerHTML=X;let i=document.createElement("input");return i.type="text",i.className="folder-input",i.value=e,i.dataset.folderInput=t,i.placeholder="Folder name",i.autocomplete="off",i.spellcheck=!1,i.setAttribute("aria-label","Folder name"),n.append(s,i),n}function O(){let e=u.folderCounts(),t=u.counts(),n=document.createDocumentFragment();n.appendChild(le({id:P,name:"All Notes"},t.notes,X));for(let r of u.folders)n.appendChild(H===r.id?Ae(r.name,r.id):le(r,e[r.id]??0,X));if(F)n.appendChild(Ae("","new"));else{let r=document.createElement("div");r.className="folder-row";let o=document.createElement("button");o.type="button",o.className="folder folder-new",o.id="new-folder-row",o.innerHTML=`${Lt}<span class="folder-name">New Folder</span>`,r.appendChild(o),n.appendChild(r)}let s=document.createElement("div");s.className="folders-sep",n.appendChild(s),n.appendChild(le({id:E,name:"Recently Deleted"},t.trash,Re)),B.replaceChildren(n);let i=B.querySelector(".folder-input");if(i&&document.activeElement!==i)i.focus(),i.select()}function V(){let e=u.visible(A),t=document.createDocumentFragment();if(e.length===0){let n=document.createElement("div");n.className="list-empty",n.textContent=A.trim()?`No notes match “${A.trim()}”.`:u.view===E?"Recently Deleted is empty.":"No notes yet. Press Alt+N to create one.",t.appendChild(n)}else for(let n of e){let s=document.createElement("button");s.type="button",s.className="note-row",s.dataset.id=n.id,s.setAttribute("role","option"),s.setAttribute("aria-selected",String(n.id===u.selectedId));let i=u.view===E?n.deletedAt??n.updatedAt:n.updatedAt;s.innerHTML=`<span class="note-title">${h(Z(n))}</span><span class="note-meta">${h(Be(i))} · ${h(St(n))}</span>`,t.appendChild(s)}Ne.replaceChildren(t)}function Ve(){let e=u.active(),t=u.view===E,n=e!==null;m.readOnly=!n||t,m.placeholder=n?"Start writing. Markdown is supported.":t?"No deleted notes.":"Select a note, or press Alt+N to start a new one.";let s=e?e.body:"";if(m.value!==s)m.value=s;kt.hidden=!(n&&t);for(let i of Et)i.disabled=!n||t;He.disabled=!n,ce.disabled=!n||t,ce.hidden=t,G.hidden=t,G.disabled=!n||t,$e.textContent=e?t?`Deleted ${Be(e.deletedAt??e.updatedAt)}`:`Edited ${We(e.updatedAt)}`:"",Ke()}function ue(){let e=u.active(),t=e?ke(e.body):"";if(t){_.innerHTML=t;return}let n=!e?u.view===E?"Recently Deleted is empty.":"Select a note to preview it.":"Nothing to preview yet — start typing on the left.";_.innerHTML=`<div class="pane-empty">${h(n)}</div>`}function k(){J(),Oe(),O(),V(),Ve(),ue()}var ae=0,de=null;function xt(){if(ae)return;ae=requestAnimationFrame(()=>{ae=0,ue()})}function Nt(){if(de!==null)return;de=setTimeout(()=>{de=null,V()},140)}function Ke(){let e=m.value.trim(),t=e?e.split(/\s+/).length:0;bt.textContent=`${t.toLocaleString()} ${t===1?"word":"words"}`}function I(e,t,n=t){m.value=e,m.focus(),m.setSelectionRange(t,n),m.dispatchEvent(new Event("input",{bubbles:!0}))}function z(e,t,n){let{selectionStart:s,selectionEnd:i,value:r}=m,o=r.slice(s,i)||n,l=r.slice(0,s)+e+o+t+r.slice(i);I(l,s+e.length,s+e.length+o.length)}function R(e){let{selectionStart:t,selectionEnd:n,value:s}=m,i=s.lastIndexOf(`
+`,Math.max(0,t-1))+1,r=s.indexOf(`
+`,n);if(r===-1)r=s.length;let l=s.slice(i,r).split(`
+`),a=l.every((f)=>!f.trim()||f.startsWith(e)),d=l.map((f)=>{if(!f.trim())return f;return a?f.slice(e.length):e+f}).join(`
+`),c=s.slice(0,i)+d+s.slice(r);I(c,i,i+d.length)}function $t(){let{selectionStart:e,selectionEnd:t,value:n}=m,i=n.slice(e,t)||"text",r=`[${i}](url)`,o=n.slice(0,e)+r+n.slice(t),l=e+i.length+3;I(o,l,l+3)}function je(e){if(m.readOnly)return;switch(e){case"bold":z("**","**","bold text");break;case"italic":z("*","*","italic text");break;case"strike":z("~~","~~","strikethrough");break;case"code":z("`","`","code");break;case"heading":R("## ");break;case"quote":R("> ");break;case"list":R("- ");break;case"ordered":R("1. ");break;case"task":R("- [ ] ");break;case"link":$t();break;default:break}}m.addEventListener("input",()=>{let e=u.active();if(!e||u.view===E)return;u.updateBody(e.id,m.value),$e.textContent=`Edited ${We(e.updatedAt)}`,xe.textContent=Z(e),Ke(),xt(),Nt()});m.addEventListener("keydown",(e)=>{if(e.key==="Tab"&&!m.readOnly){e.preventDefault();let{selectionStart:y,selectionEnd:K,value:Q}=m,Ge=Q.slice(0,y)+"  "+Q.slice(K);I(Ge,y+2);return}if(e.key!=="Enter"||e.shiftKey||e.metaKey||e.ctrlKey||e.altKey)return;if(m.readOnly)return;let{selectionStart:t,selectionEnd:n,value:s}=m;if(t!==n)return;let i=s.lastIndexOf(`
+`,t-1)+1,r=s.slice(i,t);if((s.slice(0,t).match(/^\s*(?:```|~~~)/gm)?.length??0)%2===1)return;let l=/^(\s*)(?:([-*+])\s+(\[[ xX]\]\s+)?|(\d+)([.)])\s+)/.exec(r);if(!l)return;let a=l[1]??"",d=l[2],c=l[3],f=l[4],g=l[5],v=r.slice(l[0].length);if(e.preventDefault(),!v.trim()){let y=s.slice(0,i)+s.slice(t);I(y,i);return}let w=`
+${f?`${a}${Number(f)+1}${g??"."} `:`${a}${d} ${c?"[ ] ":""}`}`,T=s.slice(0,t)+w+s.slice(n);I(T,t+w.length)});_e.addEventListener("click",(e)=>{let t=e.target.closest("[data-md]");if(!t||t.disabled||!t.dataset.md)return;m.focus(),je(t.dataset.md)});function C(){delete document.body.dataset.drawer}Ne.addEventListener("click",(e)=>{let t=e.target.closest(".note-row");if(!t?.dataset.id)return;u.select(t.dataset.id),Oe(),V(),Ve(),ue(),m.focus(),C()});function qe(){F=!0,H=null,O()}function It(){F=!1,H=null,O()}function Pe(e){let t=e.dataset.folderInput,n=e.value.trim();if(t==="new"){if(F=!1,!n){O();return}u.createFolder(n),k();return}if(!t)return;if(H=null,n)u.renameFolder(t,n);k()}B.addEventListener("click",(e)=>{let t=e.target,n=t.closest("[data-delete-folder]");if(n?.dataset.deleteFolder){let o=n.dataset.deleteFolder,l=u.folderName(o);if(window.confirm(`Delete “${l}”? Its notes will move to Recently Deleted.`))u.deleteFolder(o),k();return}let s=t.closest("[data-rename-folder]");if(s?.dataset.renameFolder){H=s.dataset.renameFolder,F=!1,O();return}if(t.closest("#new-folder-row")){qe();return}let r=t.closest("[data-folder]")?.dataset.folder;if(!r)return;u.setView(r),A="",L.value="",H=null,F=!1,k(),m.focus(),C()});p("#new-folder").addEventListener("click",qe);B.addEventListener("keydown",(e)=>{let t=e.target;if(!(t instanceof HTMLInputElement)||!t.classList.contains("folder-input"))return;if(e.key==="Escape")e.preventDefault(),It();else if(e.key==="Enter")e.preventDefault(),Pe(t)});B.addEventListener("focusout",(e)=>{let t=e.target;if(!(t instanceof HTMLInputElement)||!t.classList.contains("folder-input"))return;requestAnimationFrame(()=>{if(t.isConnected&&document.activeElement!==t)Pe(t)})});function J(){W.hidden=!0}function _t(){let e=u.active();if(!e)return;Fe.innerHTML=u.folders.map((t)=>{let n=t.id===e.folderId;return`<button type="button" class="popover-item" data-move-to="${t.id}">`+X+`<span class="folder-name">${h(t.name)}</span>`+(n?At:"")+"</button>"}).join("")}G.addEventListener("click",(e)=>{if(e.stopPropagation(),!W.hidden){J();return}_t(),W.hidden=!1});Fe.addEventListener("click",(e)=>{let n=e.target.closest("[data-move-to]")?.dataset.moveTo,s=u.active();if(!n||!s)return;u.moveNote(s.id,n),k(),m.focus()});document.addEventListener("click",(e)=>{if(W.hidden)return;let t=e.target;if(W.contains(t)||G.contains(t))return;J()});L.addEventListener("input",()=>{A=L.value,V()});L.addEventListener("keydown",(e)=>{if(e.key!=="Escape")return;e.preventDefault(),L.value="",A="",V(),L.blur()});function Ye(){u.create(),A="",L.value="",k(),C(),m.focus()}for(let e of["#new-note","#new-note-side","#new-note-mobile"])p(e).addEventListener("click",Ye);Ie.addEventListener("click",()=>{let{trash:e}=u.counts();if(e===0)return;if(!window.confirm("Delete all notes in Recently Deleted? This cannot be undone."))return;u.emptyTrash(),k()});ce.addEventListener("click",()=>{let e=u.active();if(!e)return;u.trash(e.id),k(),m.focus()});p("#restore-note").addEventListener("click",()=>{let e=u.active();if(!e)return;u.restore(e.id),k(),m.focus()});p("#delete-forever").addEventListener("click",()=>{let e=u.active();if(!e)return;if(!window.confirm("Delete this note permanently? This cannot be undone."))return;u.destroy(e.id),k()});He.addEventListener("click",()=>{let e=u.active();if(!e)return;let t=new Blob([e.body],{type:"text/markdown;charset=utf-8"}),n=URL.createObjectURL(t),s=document.createElement("a");s.href=n,s.download=`${Mt(Z(e))}.md`,document.body.appendChild(s),s.click(),s.remove(),setTimeout(()=>URL.revokeObjectURL(n),1000)});_.addEventListener("click",async(e)=>{let t=e.target.closest("[data-copy]");if(!t)return;let n=t.closest(".md-code-block")?.querySelector("code");if(!n)return;try{await navigator.clipboard.writeText(n.textContent??""),t.textContent="Copied"}catch{t.textContent="Failed"}setTimeout(()=>{t.textContent="Copy"},1400)});var Se=0;function Ue(e,t){let n=Date.now();if(n-Se<70)return;let s=e.scrollHeight-e.clientHeight,i=t.scrollHeight-t.clientHeight;if(s<=0||i<=0)return;Se=n,t.scrollTop=e.scrollTop/s*i}m.addEventListener("scroll",()=>Ue(m,_),{passive:!0});_.addEventListener("scroll",()=>Ue(_,m),{passive:!0});function fe(){let e=Te();for(let t of Ce)t.setAttribute("aria-pressed",String(t.dataset.themeMode===e))}function ze(){let e=document.body.dataset.view??"edit";for(let t of De)t.setAttribute("aria-pressed",String((t.dataset.view??"edit")===e))}for(let e of Ce)e.addEventListener("click",()=>{let t=e.dataset.themeMode;if(t==="system"||t==="light"||t==="dark")Y(t,fe)});Le(()=>fe());for(let e of De)e.addEventListener("click",()=>{let t=e.dataset.view==="preview"?"preview":"edit";document.body.dataset.view=t,ze()});p("#toggle-sidebar").addEventListener("click",()=>{document.body.dataset.drawer="sidebar"});p("#toggle-list").addEventListener("click",()=>{document.body.dataset.drawer="list"});yt.addEventListener("click",C);document.addEventListener("keydown",(e)=>{let t=e.metaKey||e.ctrlKey,n=e.key.toLowerCase();if(t&&n==="k"){e.preventDefault(),C(),L.focus(),L.select();return}if(e.altKey&&n==="n"&&!t){e.preventDefault(),Ye();return}if(document.activeElement===m&&t&&(n==="b"||n==="i")){e.preventDefault(),je(n==="b"?"bold":"italic");return}if(e.key==="Escape")J(),C()});window.addEventListener("pagehide",()=>u.flush());window.addEventListener("beforeunload",()=>u.flush());document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")u.flush()});document.body.dataset.view="edit";var Ht=/Mac|iPhone|iPad/.test(navigator.userAgent),Me=document.querySelector(".search-field kbd");if(Me)Me.textContent=Ht?"⌘K":"Ctrl K";k();
 </script>
   </body>
 </html>
