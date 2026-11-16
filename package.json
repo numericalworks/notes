@@ -1,0 +1,17 @@
+{
+  "name": "notes",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "An Apple Notes-inspired Markdown notes app that builds to a single self-contained index.html",
+  "scripts": {
+    "build": "bun build.ts",
+    "dev": "bun build.ts --serve",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}

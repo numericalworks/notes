@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="A local-first Markdown notes app with a live preview." />
+    <title>Notes</title>
+    <style>/*__CSS__*/</style>
+    <script>
+      // Paint the right theme before first paint to avoid a flash.
+      (function () {
+        try {
+          var mode = localStorage.getItem("notes.theme") || "system";
+          var dark =
+            mode === "dark" ||
+            (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          root.dataset.theme = dark ? "dark" : "light";
+          root.style.colorScheme = dark ? "dark" : "light";
+        } catch (error) {
+          /* ignore */
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="mobile-bar">
+        <button type="button" class="icon-btn" id="toggle-list" aria-label="Show notes">
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" />
+          </svg>
+        </button>
+        <div class="seg" id="view-toggle" role="group" aria-label="Pane">
+          <button type="button" data-view="edit" aria-pressed="true">Edit</button>
+          <button type="button" data-view="preview" aria-pressed="false">Preview</button>
+        </div>
+        <button type="button" class="icon-btn" id="new-note-mobile" aria-label="New note">
+          <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M10 4v12M4 10h12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="app">
+        <aside class="sidebar" id="sidebar" aria-label="Folders">
+          <div class="sidebar-head">
+            <h1 class="brand">Notes</h1>
+            <button type="button" class="icon-btn" id="new-note-side" title="New note (Alt+N)" aria-label="New note">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 4v12M4 10h12" />
+              </svg>
+            </button>
+          </div>
+
+          <label class="search-field">
+            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+              <circle cx="9" cy="9" r="5" />
+              <path d="M12.8 12.8L17 17" />
+            </svg>
+            <input id="search" type="search" placeholder="Search" autocomplete="off" spellcheck="false" />
+            <kbd>⌘K</kbd>
+          </label>
+
+          <div class="section-label">Folders</div>
+          <nav class="folders" id="folders">
+            <button type="button" class="folder" data-folder="notes">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3 6.2A1.2 1.2 0 0 1 4.2 5h3.1l1.4 1.8h7.1A1.2 1.2 0 0 1 17 8v6.8a1.2 1.2 0 0 1-1.2 1.2H4.2A1.2 1.2 0 0 1 3 14.8z" />
+              </svg>
+              <span class="folder-name">All Notes</span>
+              <span class="count" id="count-notes">0</span>
+            </button>
+            <button type="button" class="folder" data-folder="trash">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4.5 6.2h11M8.2 6.2V4.6h3.6v1.6M6.2 6.2l.6 9.2h6.4l.6-9.2" />
+              </svg>
+              <span class="folder-name">Recently Deleted</span>
+              <span class="count" id="count-trash">0</span>
+            </button>
+          </nav>
+
+          <div class="sidebar-foot">
+            <div class="section-label">Appearance</div>
+            <div class="seg theme-seg" id="theme-switch" role="group" aria-label="Theme">
+              <button type="button" data-theme-mode="system">Auto</button>
+              <button type="button" data-theme-mode="light">Light</button>
+              <button type="button" data-theme-mode="dark">Dark</button>
+            </div>
+          </div>
+        </aside>
+
+        <div class="backdrop" id="backdrop"></div>
+
+        <section class="list-pane" aria-label="Notes list">
+          <header class="pane-head">
+            <button type="button" class="icon-btn only-medium" id="toggle-sidebar" title="Folders" aria-label="Folders">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M3.5 5.5h13M3.5 10h13M3.5 14.5h13" />
+              </svg>
+            </button>
+            <h2 class="pane-title" id="list-title">All Notes</h2>
+            <button type="button" class="icon-btn" id="empty-trash" title="Empty Trash" aria-label="Empty Trash" hidden>
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M4.5 6.2h11M8.2 6.2V4.6h3.6v1.6M6.2 6.2l.6 9.2h6.4l.6-9.2" />
+              </svg>
+            </button>
+            <button type="button" class="icon-btn" id="new-note" title="New note (Alt+N)" aria-label="New note">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M10 4v12M4 10h12" />
+              </svg>
+            </button>
+          </header>
+          <div class="note-list" id="note-list" role="listbox" aria-label="Notes"></div>
+        </section>
+
+        <main class="editor-pane" aria-label="Editor">
+          <header class="pane-head">
+            <span class="note-stamp" id="note-stamp"></span>
+            <div class="head-actions">
+              <button type="button" class="icon-btn" id="export-note" title="Download as Markdown" aria-label="Download note">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M10 3.2v9M10 12.2l3.2-3.2M10 12.2L6.8 9M4 15.8h12" />
+                </svg>
+              </button>
+              <button type="button" class="icon-btn danger" id="trash-note" title="Move to Recently Deleted" aria-label="Delete note">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M4.5 6.2h11M8.2 6.2V4.6h3.6v1.6M6.2 6.2l.6 9.2h6.4l.6-9.2" />
+                </svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="trash-banner" id="trash-banner" hidden>
+            <span class="trash-text">This note is in Recently Deleted.</span>
+            <button type="button" class="btn" id="restore-note">Restore</button>
+            <button type="button" class="btn danger" id="delete-forever">Delete Forever</button>
+          </div>
+
+          <div class="tb-row" id="md-toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" class="tb-btn" data-md="bold" title="Bold (⌘B)"><span class="tb-bold">B</span></button>
+            <button type="button" class="tb-btn" data-md="italic" title="Italic (⌘I)"><span class="tb-italic">I</span></button>
+            <button type="button" class="tb-btn" data-md="strike" title="Strikethrough"><span class="tb-strike">S</span></button>
+            <span class="tb-sep" aria-hidden="true"></span>
+            <button type="button" class="tb-btn" data-md="heading" title="Heading">H</button>
+            <button type="button" class="tb-btn" data-md="code" title="Inline code"><span class="tb-mono">&lt;/&gt;</span></button>
+            <button type="button" class="tb-btn" data-md="link" title="Link">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M8.4 11.6a3.1 3.1 0 0 0 4.4 0l2-2a3.1 3.1 0 0 0-4.4-4.4l-1 1" />
+                <path d="M11.6 8.4a3.1 3.1 0 0 0-4.4 0l-2 2a3.1 3.1 0 0 0 4.4 4.4l1-1" />
+              </svg>
+            </button>
+            <span class="tb-sep" aria-hidden="true"></span>
+            <button type="button" class="tb-btn" data-md="list" title="Bulleted list">•</button>
+            <button type="button" class="tb-btn" data-md="ordered" title="Numbered list">1.</button>
+            <button type="button" class="tb-btn" data-md="task" title="Checklist">
+              <svg class="icon" viewBox="0 0 20 20" aria-hidden="true">
+                <rect x="3.6" y="3.6" width="12.8" height="12.8" rx="3.2" />
+                <path d="M7 10.2l2.1 2.1 3.9-4.4" />
+              </svg>
+            </button>
+            <button type="button" class="tb-btn" data-md="quote" title="Quote">❝</button>
+          </div>
+
+          <textarea
+            id="editor"
+            spellcheck="true"
+            autocapitalize="sentences"
+            autocomplete="off"
+            placeholder="Start writing. Markdown is supported."
+          ></textarea>
+
+          <footer class="editor-foot">
+            <span id="word-count">0 words</span>
+            <span class="hint">Markdown · saved automatically</span>
+          </footer>
+        </main>
+
+        <section class="preview-pane" aria-label="Preview">
+          <header class="pane-head">
+            <span class="pane-title">Preview</span>
+            <span class="pane-sub" id="preview-title"></span>
+          </header>
+          <article class="preview" id="preview"></article>
+        </section>
+      </div>
+    </div>
+    <script>/*__JS__*/</script>
+  </body>
+</html>

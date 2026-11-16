@@ -1,0 +1,641 @@
+import { escapeHtml, renderMarkdown } from "./markdown";
+import { NotesStore, type Folder, type Note } from "./store";
+import { applyTheme, currentThemeMode, initTheme, type ThemeMode } from "./theme";
+
+/* ------------------------------------------------------------------ *
+ * DOM
+ * ------------------------------------------------------------------ */
+
+function must<T extends HTMLElement>(selector: string): T {
+  const node = document.querySelector<T>(selector);
+  if (!node) throw new Error(`Missing element: ${selector}`);
+  return node;
+}
+
+const editor = must<HTMLTextAreaElement>("#editor");
+const preview = must<HTMLElement>("#preview");
+const previewTitle = must<HTMLElement>("#preview-title");
+const noteList = must<HTMLElement>("#note-list");
+const listTitle = must<HTMLElement>("#list-title");
+const noteStamp = must<HTMLElement>("#note-stamp");
+const wordCount = must<HTMLElement>("#word-count");
+const searchInput = must<HTMLInputElement>("#search");
+const backdrop = must<HTMLElement>("#backdrop");
+const folders = must<HTMLElement>("#folders");
+const countNotes = must<HTMLElement>("#count-notes");
+const countTrash = must<HTMLElement>("#count-trash");
+const emptyTrash = must<HTMLButtonElement>("#empty-trash");
+const trashBanner = must<HTMLElement>("#trash-banner");
+const mdToolbar = must<HTMLElement>("#md-toolbar");
+const exportNote = must<HTMLButtonElement>("#export-note");
+const trashNote = must<HTMLButtonElement>("#trash-note");
+
+const toolbarButtons = Array.from(mdToolbar.querySelectorAll<HTMLButtonElement>("button"));
+const themeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-mode]"));
+const viewButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-view]"));
+
+const store = new NotesStore();
+let query = "";
+
+/* ------------------------------------------------------------------ *
+ * Text helpers
+ * ------------------------------------------------------------------ */
+
+const relativeFormat = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+
+function deriveTitle(note: Note | null): string {
+  if (!note) return "New Note";
+  const first = note.body.split("\n").find((line) => line.trim()) ?? "";
+  const title = first
+    .replace(/[*`~]/g, "")
+    .trim()
+    .replace(/^(#{1,6}|>|[-*+]|\d+[.)])\s+/, "")
+    .trim();
+  return title || "New Note";
+}
+
+function snippet(note: Note): string {
+  const text = note.body
+    .split("\n")
+    .slice(1)
+    .join(" ")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*_`~|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text.slice(0, 110) || "No additional text";
+}
+
+function formatRelative(timestamp: number): string {
+  const diff = Date.now() - timestamp;
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diff < 45_000) return "Just now";
+  if (diff < hour) return relativeFormat.format(-Math.round(diff / minute), "minute");
+  if (diff < day) return relativeFormat.format(-Math.round(diff / hour), "hour");
+  if (diff < 7 * day) return relativeFormat.format(-Math.round(diff / day), "day");
+
+  const date = new Date(timestamp);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
+}
+
+function formatFull(timestamp: number): string {
+  return new Date(timestamp).toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function slugify(value: string): string {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+  return slug || "note";
+}
+
+/* ------------------------------------------------------------------ *
+ * Rendering
+ * ------------------------------------------------------------------ */
+
+function renderChrome(): void {
+  const counts = store.counts();
+  countNotes.textContent = String(counts.notes);
+  countTrash.textContent = String(counts.trash);
+  listTitle.textContent = store.folder === "trash" ? "Recently Deleted" : "All Notes";
+  emptyTrash.hidden = store.folder !== "trash" || counts.trash === 0;
+
+  for (const button of Array.from(folders.querySelectorAll<HTMLButtonElement>("[data-folder]"))) {
+    button.setAttribute("aria-current", String(button.dataset.folder === store.folder));
+  }
+
+  const note = store.active();
+  previewTitle.textContent = note ? deriveTitle(note) : "";
+  syncThemeButtons();
+  syncViewButtons();
+}
+
+function renderList(): void {
+  const notes = store.visible(query);
+  const fragment = document.createDocumentFragment();
+
+  if (notes.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "list-empty";
+    empty.textContent = query.trim()
+      ? `No notes match “${query.trim()}”.`
+      : store.folder === "trash"
+        ? "Recently Deleted is empty."
+        : "No notes yet. Press Alt+N to create one.";
+    fragment.appendChild(empty);
+  } else {
+    for (const note of notes) {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "note-row";
+      row.dataset.id = note.id;
+      row.setAttribute("role", "option");
+      row.setAttribute("aria-selected", String(note.id === store.selectedId));
+
+      const stamp = store.folder === "trash" ? (note.deletedAt ?? note.updatedAt) : note.updatedAt;
+      row.innerHTML =
+        `<span class="note-title">${escapeHtml(deriveTitle(note))}</span>` +
+        `<span class="note-meta">${escapeHtml(formatRelative(stamp))} · ${escapeHtml(snippet(note))}</span>`;
+
+      fragment.appendChild(row);
+    }
+  }
+
+  noteList.replaceChildren(fragment);
+}
+
+function renderEditor(): void {
+  const note = store.active();
+  const inTrash = store.folder === "trash";
+  const hasNote = note !== null;
+
+  editor.readOnly = !hasNote || inTrash;
+  editor.placeholder = hasNote
+    ? "Start writing. Markdown is supported."
+    : inTrash
+      ? "No deleted notes."
+      : "Select a note, or press Alt+N to start a new one.";
+
+  const body = note ? note.body : "";
+  if (editor.value !== body) editor.value = body;
+
+  trashBanner.hidden = !(hasNote && inTrash);
+  for (const button of toolbarButtons) button.disabled = !hasNote || inTrash;
+  exportNote.disabled = !hasNote;
+  trashNote.disabled = !hasNote || inTrash;
+  trashNote.hidden = inTrash;
+
+  noteStamp.textContent = note
+    ? inTrash
+      ? `Deleted ${formatRelative(note.deletedAt ?? note.updatedAt)}`
+      : `Edited ${formatFull(note.updatedAt)}`
+    : "";
+
+  updateWordCount();
+}
+
+function renderPreview(): void {
+  const note = store.active();
+  const html = note ? renderMarkdown(note.body) : "";
+
+  if (html) {
+    preview.innerHTML = html;
+    return;
+  }
+
+  const message = !note
+    ? store.folder === "trash"
+      ? "Recently Deleted is empty."
+      : "Select a note to preview it."
+    : "Nothing to preview yet — start typing on the left.";
+  preview.innerHTML = `<div class="pane-empty">${escapeHtml(message)}</div>`;
+}
+
+function renderAll(): void {
+  renderChrome();
+  renderList();
+  renderEditor();
+  renderPreview();
+}
+
+/* ------------------------------------------------------------------ *
+ * Throttled live updates
+ * ------------------------------------------------------------------ */
+
+let previewFrame = 0;
+let listTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePreview(): void {
+  if (previewFrame) return;
+  previewFrame = requestAnimationFrame(() => {
+    previewFrame = 0;
+    renderPreview();
+  });
+}
+
+function scheduleList(): void {
+  if (listTimer !== null) return;
+  listTimer = setTimeout(() => {
+    listTimer = null;
+    renderList();
+  }, 140);
+}
+
+function updateWordCount(): void {
+  const text = editor.value.trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  wordCount.textContent = `${words.toLocaleString()} ${words === 1 ? "word" : "words"}`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Editor behaviour
+ * ------------------------------------------------------------------ */
+
+function applyEditorValue(value: string, selectionStart: number, selectionEnd = selectionStart): void {
+  editor.value = value;
+  editor.focus();
+  editor.setSelectionRange(selectionStart, selectionEnd);
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function wrapSelection(before: string, after: string, placeholder: string): void {
+  const { selectionStart, selectionEnd, value } = editor;
+  const selected = value.slice(selectionStart, selectionEnd) || placeholder;
+  const next = value.slice(0, selectionStart) + before + selected + after + value.slice(selectionEnd);
+  applyEditorValue(next, selectionStart + before.length, selectionStart + before.length + selected.length);
+}
+
+function prefixLines(prefix: string): void {
+  const { selectionStart, selectionEnd, value } = editor;
+  const lineStart = value.lastIndexOf("\n", Math.max(0, selectionStart - 1)) + 1;
+  let lineEnd = value.indexOf("\n", selectionEnd);
+  if (lineEnd === -1) lineEnd = value.length;
+
+  const block = value.slice(lineStart, lineEnd);
+  const lines = block.split("\n");
+  const everyLinePrefixed = lines.every((line) => !line.trim() || line.startsWith(prefix));
+
+  const updated = lines
+    .map((line) => {
+      if (!line.trim()) return line;
+      return everyLinePrefixed ? line.slice(prefix.length) : prefix + line;
+    })
+    .join("\n");
+
+  const next = value.slice(0, lineStart) + updated + value.slice(lineEnd);
+  applyEditorValue(next, lineStart, lineStart + updated.length);
+}
+
+function insertLink(): void {
+  const { selectionStart, selectionEnd, value } = editor;
+  const selected = value.slice(selectionStart, selectionEnd);
+  const label = selected || "text";
+  const inserted = `[${label}](url)`;
+  const next = value.slice(0, selectionStart) + inserted + value.slice(selectionEnd);
+  const urlStart = selectionStart + label.length + 3;
+  applyEditorValue(next, urlStart, urlStart + 3);
+}
+
+function runFormat(action: string): void {
+  if (editor.readOnly) return;
+  switch (action) {
+    case "bold":
+      wrapSelection("**", "**", "bold text");
+      break;
+    case "italic":
+      wrapSelection("*", "*", "italic text");
+      break;
+    case "strike":
+      wrapSelection("~~", "~~", "strikethrough");
+      break;
+    case "code":
+      wrapSelection("`", "`", "code");
+      break;
+    case "heading":
+      prefixLines("## ");
+      break;
+    case "quote":
+      prefixLines("> ");
+      break;
+    case "list":
+      prefixLines("- ");
+      break;
+    case "ordered":
+      prefixLines("1. ");
+      break;
+    case "task":
+      prefixLines("- [ ] ");
+      break;
+    case "link":
+      insertLink();
+      break;
+    default:
+      break;
+  }
+}
+
+editor.addEventListener("input", () => {
+  const note = store.active();
+  if (!note || store.folder === "trash") return;
+
+  store.updateBody(note.id, editor.value);
+  noteStamp.textContent = `Edited ${formatFull(note.updatedAt)}`;
+  previewTitle.textContent = deriveTitle(note);
+  updateWordCount();
+  schedulePreview();
+  scheduleList();
+});
+
+editor.addEventListener("keydown", (event) => {
+  if (event.key === "Tab" && !editor.readOnly) {
+    event.preventDefault();
+    const { selectionStart, selectionEnd, value } = editor;
+    const next = value.slice(0, selectionStart) + "  " + value.slice(selectionEnd);
+    applyEditorValue(next, selectionStart + 2);
+    return;
+  }
+
+  if (event.key !== "Enter" || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+  if (editor.readOnly) return;
+
+  const { selectionStart, selectionEnd, value } = editor;
+  if (selectionStart !== selectionEnd) return;
+
+  const lineStart = value.lastIndexOf("\n", selectionStart - 1) + 1;
+  const line = value.slice(lineStart, selectionStart);
+
+  // Never auto-continue a list inside a fenced code block.
+  const fences = value.slice(0, selectionStart).match(/^\s*(?:```|~~~)/gm)?.length ?? 0;
+  if (fences % 2 === 1) return;
+
+  const marker = /^(\s*)(?:([-*+])\s+(\[[ xX]\]\s+)?|(\d+)([.)])\s+)/.exec(line);
+  if (!marker) return;
+
+  const indent = marker[1] ?? "";
+  const bullet = marker[2];
+  const task = marker[3];
+  const number = marker[4];
+  const delimiter = marker[5];
+  const content = line.slice(marker[0].length);
+
+  event.preventDefault();
+
+  // Pressing Enter on an empty list item ends the list instead of adding a new one.
+  if (!content.trim()) {
+    const next = value.slice(0, lineStart) + value.slice(selectionStart);
+    applyEditorValue(next, lineStart);
+    return;
+  }
+
+  const prefix = number
+    ? `${indent}${Number(number) + 1}${delimiter ?? "."} `
+    : `${indent}${bullet} ${task ? "[ ] " : ""}`;
+  const insertion = `\n${prefix}`;
+  const next = value.slice(0, selectionStart) + insertion + value.slice(selectionEnd);
+  applyEditorValue(next, selectionStart + insertion.length);
+});
+
+mdToolbar.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-md]");
+  if (!button || button.disabled || !button.dataset.md) return;
+  editor.focus();
+  runFormat(button.dataset.md);
+});
+
+/* ------------------------------------------------------------------ *
+ * Notes list / folders / search
+ * ------------------------------------------------------------------ */
+
+function closeDrawers(): void {
+  delete document.body.dataset.drawer;
+}
+
+noteList.addEventListener("click", (event) => {
+  const row = (event.target as HTMLElement).closest<HTMLElement>(".note-row");
+  if (!row?.dataset.id) return;
+
+  store.select(row.dataset.id);
+  renderChrome();
+  renderList();
+  renderEditor();
+  renderPreview();
+  editor.focus();
+  closeDrawers();
+});
+
+folders.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-folder]");
+  const folder = button?.dataset.folder;
+  if (folder !== "notes" && folder !== "trash") return;
+
+  store.setFolder(folder as Folder);
+  renderAll();
+  editor.focus();
+  closeDrawers();
+});
+
+searchInput.addEventListener("input", () => {
+  query = searchInput.value;
+  renderList();
+});
+
+searchInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.preventDefault();
+  searchInput.value = "";
+  query = "";
+  renderList();
+  searchInput.blur();
+});
+
+function newNote(): void {
+  store.create();
+  query = "";
+  searchInput.value = "";
+  renderAll();
+  closeDrawers();
+  editor.focus();
+}
+
+for (const id of ["#new-note", "#new-note-side", "#new-note-mobile"]) {
+  must<HTMLButtonElement>(id).addEventListener("click", newNote);
+}
+
+emptyTrash.addEventListener("click", () => {
+  const { trash } = store.counts();
+  if (trash === 0) return;
+  if (!window.confirm("Delete all notes in Recently Deleted? This cannot be undone.")) return;
+  store.emptyTrash();
+  renderAll();
+});
+
+trashNote.addEventListener("click", () => {
+  const note = store.active();
+  if (!note) return;
+  store.trash(note.id);
+  renderAll();
+  editor.focus();
+});
+
+must<HTMLButtonElement>("#restore-note").addEventListener("click", () => {
+  const note = store.active();
+  if (!note) return;
+  store.restore(note.id);
+  renderAll();
+  editor.focus();
+});
+
+must<HTMLButtonElement>("#delete-forever").addEventListener("click", () => {
+  const note = store.active();
+  if (!note) return;
+  if (!window.confirm("Delete this note permanently? This cannot be undone.")) return;
+  store.destroy(note.id);
+  renderAll();
+});
+
+exportNote.addEventListener("click", () => {
+  const note = store.active();
+  if (!note) return;
+
+  const blob = new Blob([note.body], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${slugify(deriveTitle(note))}.md`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+/* ------------------------------------------------------------------ *
+ * Preview extras
+ * ------------------------------------------------------------------ */
+
+preview.addEventListener("click", async (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>("[data-copy]");
+  if (!button) return;
+
+  const code = button.closest(".md-code-block")?.querySelector("code");
+  if (!code) return;
+
+  try {
+    await navigator.clipboard.writeText(code.textContent ?? "");
+    button.textContent = "Copied";
+  } catch {
+    button.textContent = "Failed";
+  }
+  setTimeout(() => {
+    button.textContent = "Copy";
+  }, 1400);
+});
+
+let scrollSyncAt = 0;
+
+function syncScroll(source: HTMLElement, target: HTMLElement): void {
+  const now = Date.now();
+  if (now - scrollSyncAt < 70) return;
+
+  const sourceMax = source.scrollHeight - source.clientHeight;
+  const targetMax = target.scrollHeight - target.clientHeight;
+  if (sourceMax <= 0 || targetMax <= 0) return;
+
+  scrollSyncAt = now;
+  target.scrollTop = (source.scrollTop / sourceMax) * targetMax;
+}
+
+editor.addEventListener("scroll", () => syncScroll(editor, preview), { passive: true });
+preview.addEventListener("scroll", () => syncScroll(preview, editor), { passive: true });
+
+/* ------------------------------------------------------------------ *
+ * Theme, drawers, shortcuts
+ * ------------------------------------------------------------------ */
+
+function syncThemeButtons(): void {
+  const mode = currentThemeMode();
+  for (const button of themeButtons) {
+    button.setAttribute("aria-pressed", String(button.dataset.themeMode === mode));
+  }
+}
+
+function syncViewButtons(): void {
+  const view = document.body.dataset.view ?? "edit";
+  for (const button of viewButtons) {
+    button.setAttribute("aria-pressed", String((button.dataset.view ?? "edit") === view));
+  }
+}
+
+for (const button of themeButtons) {
+  button.addEventListener("click", () => {
+    const mode = button.dataset.themeMode;
+    if (mode === "system" || mode === "light" || mode === "dark") applyTheme(mode as ThemeMode, syncThemeButtons);
+  });
+}
+
+initTheme(() => syncThemeButtons());
+
+for (const button of viewButtons) {
+  button.addEventListener("click", () => {
+    const view = button.dataset.view === "preview" ? "preview" : "edit";
+    document.body.dataset.view = view;
+    syncViewButtons();
+  });
+}
+
+must<HTMLButtonElement>("#toggle-sidebar").addEventListener("click", () => {
+  document.body.dataset.drawer = "sidebar";
+});
+
+must<HTMLButtonElement>("#toggle-list").addEventListener("click", () => {
+  document.body.dataset.drawer = "list";
+});
+
+backdrop.addEventListener("click", closeDrawers);
+
+document.addEventListener("keydown", (event) => {
+  const mod = event.metaKey || event.ctrlKey;
+  const key = event.key.toLowerCase();
+
+  if (mod && key === "k") {
+    event.preventDefault();
+    closeDrawers();
+    searchInput.focus();
+    searchInput.select();
+    return;
+  }
+
+  if (event.altKey && key === "n" && !mod) {
+    event.preventDefault();
+    newNote();
+    return;
+  }
+
+  if (document.activeElement === editor && mod && (key === "b" || key === "i")) {
+    event.preventDefault();
+    runFormat(key === "b" ? "bold" : "italic");
+    return;
+  }
+
+  if (event.key === "Escape") {
+    closeDrawers();
+  }
+});
+
+/* ------------------------------------------------------------------ *
+ * Persist on the way out
+ * ------------------------------------------------------------------ */
+
+window.addEventListener("pagehide", () => store.flush());
+window.addEventListener("beforeunload", () => store.flush());
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") store.flush();
+});
+
+/* ------------------------------------------------------------------ *
+ * Boot
+ * ------------------------------------------------------------------ */
+
+document.body.dataset.view = "edit";
+
+const isMac = /Mac|iPhone|iPad/.test(navigator.userAgent);
+const searchHint = document.querySelector<HTMLElement>(".search-field kbd");
+if (searchHint) searchHint.textContent = isMac ? "⌘K" : "Ctrl K";
+
+renderAll();
