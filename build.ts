@@ -19,6 +19,7 @@ const PORT = Number(process.env.PORT ?? 4173);
 const OUT_DIR = `${ROOT}/dist`;
 const OUT_FILE = `${OUT_DIR}/index.html`;
 const MERMAID_FILE = `${ROOT}/node_modules/mermaid/dist/mermaid.min.js`;
+const CHARTJS_FILE = `${ROOT}/node_modules/chart.js/dist/chart.umd.js`;
 const FAVICON_FILE = `${ROOT}/src/favicon.svg`;
 
 function escapeClosingTag(code: string, tag: string): string {
@@ -38,7 +39,15 @@ async function mermaidBundle(): Promise<string> {
   return escapeClosingTag(await Bun.file(MERMAID_FILE).text(), "script");
 }
 
-async function bundle(mermaid: string): Promise<string> {
+async function chartJsBundle(): Promise<string> {
+  if (!(await Bun.file(CHARTJS_FILE).exists())) {
+    console.warn("! Chart.js bundle not found — run `bun install`; chart blocks will report an error");
+    return "";
+  }
+  return escapeClosingTag(await Bun.file(CHARTJS_FILE).text(), "script");
+}
+
+async function bundle(mermaid: string, chartjs: string): Promise<string> {
   const result = await Bun.build({
     entrypoints: [`${ROOT}/src/main.ts`],
     target: "browser",
@@ -64,7 +73,7 @@ async function bundle(mermaid: string): Promise<string> {
   const faviconSvg = (await Bun.file(FAVICON_FILE).text()).trim();
   const favicon = `data:image/svg+xml,${encodeURIComponent(faviconSvg).replace(/'/g, "%27")}`;
 
-  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__JS__*/", "__BUILD__", "__FAVICON__"]) {
+  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__CHARTJS__*/", "/*__JS__*/", "__BUILD__", "__FAVICON__"]) {
     if (!template.includes(placeholder)) {
       throw new Error(`src/index.html is missing the ${placeholder} placeholder`);
     }
@@ -79,11 +88,12 @@ async function bundle(mermaid: string): Promise<string> {
     .replace("__FAVICON__", () => favicon)
     .replace("/*__CSS__*/", () => css)
     .replace("/*__MERMAID__*/", () => mermaid)
+    .replace("/*__CHARTJS__*/", () => chartjs)
     .replace("/*__JS__*/", () => js);
 }
 
 async function buildAndWrite(): Promise<string> {
-  const html = await bundle(await mermaidBundle());
+  const html = await bundle(await mermaidBundle(), await chartJsBundle());
   mkdirSync(OUT_DIR, { recursive: true });
   await Bun.write(OUT_FILE, html);
 

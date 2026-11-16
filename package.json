@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "asciimath": "^0.0.1",
+    "chart.js": "^4.6.1",
     "mermaid": "^12.3.0"
   }
 }

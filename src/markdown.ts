@@ -669,6 +669,11 @@ function renderBlocks(lines: string[]): string {
           `<div class="md-diagram md-mermaid" data-diagram="${escapeHtml(code)}">` +
             '<div class="md-diagram-placeholder">Mermaid diagram</div></div>',
         );
+      } else if (lang === "chart") {
+        out.push(
+          `<div class="md-chart" data-chart="${escapeHtml(code)}">` +
+            '<div class="md-chart-placeholder">Chart</div></div>',
+        );
       } else if (lang === "asciimath" || lang === "am") {
         out.push(renderMathBlock(code));
       } else {

@@ -170,6 +170,16 @@ describe("diagrams", () => {
   });
 });
 
+describe("charts", () => {
+  test("chart fences become placeholders carrying the JSON config", () => {
+    const html = renderMarkdown('```chart\n{ "type": "bar", "data": { "labels": ["a"] } }\n```');
+    expect(html).toContain('class="md-chart"');
+    expect(html).toContain('data-chart="{ &quot;type&quot;: &quot;bar&quot;');
+    expect(html).toContain("md-chart-placeholder");
+    expect(html).not.toContain("md-code");
+  });
+});
+
 describe("robustness", () => {
   test("empty and whitespace-only input", () => {
     expect(renderMarkdown("")).toBe("");

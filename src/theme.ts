@@ -1,5 +1,9 @@
 /** Theme handling: system-following by default, with manual light/dark overrides. */
 
+/** Shared UI font stack, used by the UI and by the diagram/chart renderers. */
+export const UI_FONT_FAMILY =
+  '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif';
+
 export type ThemeMode = "system" | "light" | "dark";
 
 const STORAGE_KEY = "notes.theme";

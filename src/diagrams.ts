@@ -11,15 +11,14 @@
  * re-render unchanged diagrams.
  */
 
-import { resolvedTheme } from "./theme";
+import { resolvedTheme, UI_FONT_FAMILY } from "./theme";
 
 interface MermaidAPI {
   initialize(config: Record<string, unknown>): void;
   render(id: string, text: string, container?: Element): Promise<{ svg: string }>;
 }
 
-const FONT_FAMILY =
-  '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, system-ui, sans-serif';
+const FONT_FAMILY = UI_FONT_FAMILY;
 
 /** Matches the preview's body text, so labels stay legible at natural size. */
 const FONT_SIZE = "15px";

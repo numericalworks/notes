@@ -35,6 +35,8 @@ bun run typecheck  # tsc --noEmit
 - **Diagrams** — fenced `mermaid` blocks rendered by the bundled Mermaid (flowcharts,
   sequence, class, state, ER, gantt, pie and the rest), themed to match and cached so
   typing elsewhere does not re-render them.
+- **Charts** — fenced `chart` blocks containing a JSON Chart.js config, drawn on canvas
+  with the app's theme colours and scaling to the pane.
 - **Preview on your terms** — hide the preview pane when you only want to write
   (`⌘\`, remembered across reloads), or expand it into a distraction-free full-screen
   reader (`⌘⇧P`, `Esc` to exit).
@@ -78,7 +80,7 @@ bun run typecheck  # tsc --noEmit
 - **Empty folders** — opening one gives you a blank editor. Just start typing: the note is
   created in that folder, no button press needed.
 
-## Math and diagrams
+## Math, diagrams and charts
 
 **AsciiMath** ([asciimath.org](https://asciimath.org/)):
 
@@ -108,6 +110,29 @@ follow the text colour. Malformed expressions fall back to showing the source.
 
 ![Math and diagrams](docs/screenshot-math.png)
 
+**Chart.js** ([chartjs.org](https://www.chartjs.org/)):
+
+Write a fenced block tagged `chart` containing a normal Chart.js config as JSON:
+
+| Part | Behaviour |
+| --- | --- |
+| container | full pane width, 320 px tall (`maintainAspectRatio: false`) |
+| theme | tick/label and grid colours follow light/dark automatically |
+| animation | off by default, so edits don't replay it — set `options.animation` to re-enable |
+| errors | invalid JSON or an unusable config shows the error inline |
+
+```json
+{
+  "type": "bar",
+  "data": {
+    "labels": ["Mon", "Tue", "Wed"],
+    "datasets": [{ "label": "Focus (h)", "data": [3, 5, 2], "backgroundColor": "#f2b705" }]
+  }
+}
+```
+
+![Chart.js blocks](docs/screenshot-charts.png)
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -128,7 +153,8 @@ follow the text colour. Malformed expressions fall back to showing the source.
 Headings (ATX and setext), bold/italic/strikethrough, inline code, fenced code blocks
 with lightweight highlighting for JS/TS, JSON, CSS, HTML, Python, shell, SQL, Go, Rust,
 Java and more, links, images, autolinks, bare URLs, blockquotes, nested ordered and
-bullet lists, task lists, tables with alignment, horizontal rules, AsciiMath and Mermaid.
+bullet lists, task lists, tables with alignment, horizontal rules, AsciiMath, Mermaid
+and Chart.js.
 
 Deliberate choices:
 
@@ -160,16 +186,17 @@ never requests a separate icon file. Closing `</script>` sequences are escaped s
 inline bundle can never terminate its own tag.
 
 Mermaid's official UMD build is inlined separately through the `/*__MERMAID__*/`
-placeholder, *after* the app script. Two reasons: bundling Mermaid's ESM build with Bun
-produces a bundle that hangs in Chromium, and running the app script first keeps
-ASCIIMathML's one-shot document scan from walking the 5 MB Mermaid source.
+placeholder, and Chart.js's through `/*__CHARTJS__*/` — both *after* the app script. Two
+reasons: bundling Mermaid's ESM build with Bun produces a bundle that hangs in Chromium,
+and running the app script first keeps ASCIIMathML's one-shot document scan from walking
+those megabytes of vendor source.
 
 Mermaid dominates the output size:
 
 | Command | Output |
 | --- | --- |
-| `bun run build` | ~5.5 MB, diagrams included |
-| `bun run build --no-mermaid` | ~107 kB, diagram blocks show an explanatory error |
+| `bun run build` | ~5.7 MB, diagrams + charts included |
+| `bun run build --no-mermaid` | ~322 kB, diagram blocks show an explanatory error |
 
 ```
 src/
@@ -180,6 +207,7 @@ src/
   markdown.ts  dependency-free Markdown renderer with highlighting
   math.ts      AsciiMath → MathML (via the asciimath package)
   diagrams.ts  Mermaid wrapper: theme setup and async rendering
+  charts.ts    Chart.js wrapper: theme defaults and mounting
   store.ts     notes + folders, ordering, migration, debounced persistence
   theme.ts     theme mode resolution and system sync
 tests/
@@ -196,6 +224,8 @@ tests/
 - No sync, accounts, or encryption — notes live unencrypted in `localStorage`.
 - Mermaid is ~5 MB of the build. `bun run build --no-mermaid` keeps the file small and
   shows an explanatory error in place of diagrams.
+- Chart blocks are JSON, so configs cannot contain JS callbacks or formatters; charts are
+  a fixed 320 px tall and re-created when the preview re-renders.
 - Math is AsciiMath, not LaTeX (ASCIIMathML understands a small amount of TeX syntax).
 - Undo history is whatever the browser keeps for the textarea; toolbar actions that
   rewrite the buffer may not be undoable.

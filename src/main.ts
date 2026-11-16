@@ -1,3 +1,4 @@
+import { configureCharts, mountChart, type ChartConfig } from "./charts";
 import { configureMermaid, renderDiagram } from "./diagrams";
 import { escapeHtml, renderMarkdown, setMathRenderer } from "./markdown";
 import { renderAsciiMath } from "./math";
@@ -331,12 +332,14 @@ function renderEditor(): void {
 
 function renderPreview(): void {
   previewGeneration += 1;
+  destroyCharts();
   const note = store.active();
   const html = note ? renderMarkdown(note.body) : "";
 
   if (html) {
     preview.innerHTML = html;
     renderDiagrams();
+    renderCharts();
     return;
   }
 
@@ -481,6 +484,81 @@ function renderDiagrams(): void {
             '<div class="md-diagram-error"><strong>Could not render this diagram</strong>' +
             `<pre>${escapeHtml(error instanceof Error ? error.message : String(error))}</pre></div>`;
         });
+    }
+  }, 200);
+}
+
+/* ------------------------------------------------------------------ *
+ * Chart.js charts
+ * ------------------------------------------------------------------ */
+
+let mountedCharts: { destroy(): void }[] = [];
+let chartTimer: ReturnType<typeof setTimeout> | null = null;
+
+function destroyCharts(): void {
+  if (chartTimer !== null) {
+    clearTimeout(chartTimer);
+    chartTimer = null;
+  }
+  for (const chart of mountedCharts) {
+    try {
+      chart.destroy();
+    } catch {
+      // Already gone with the DOM node; nothing to clean up.
+    }
+  }
+  mountedCharts = [];
+}
+
+function showChartError(node: HTMLElement, error: unknown): void {
+  node.classList.add("is-error");
+  node.innerHTML =
+    '<div class="md-chart-error"><strong>Could not render this chart</strong>' +
+    `<pre>${escapeHtml(error instanceof Error ? error.message : String(error))}</pre></div>`;
+}
+
+function renderCharts(): void {
+  const nodes = Array.from(preview.querySelectorAll<HTMLElement>(".md-chart[data-chart]"));
+  if (nodes.length === 0) return;
+
+  const generation = previewGeneration;
+
+  for (const node of nodes) {
+    if (!node.querySelector(".md-chart-placeholder, .md-chart-error")) {
+      node.innerHTML = '<div class="md-chart-placeholder">Rendering chart…</div>';
+    }
+  }
+
+  if (chartTimer !== null) clearTimeout(chartTimer);
+  chartTimer = setTimeout(() => {
+    chartTimer = null;
+    if (generation !== previewGeneration) return;
+
+    for (const node of nodes) {
+      if (!node.isConnected) continue;
+
+      let config: unknown;
+      try {
+        config = JSON.parse(node.dataset.chart ?? "");
+      } catch (error) {
+        showChartError(node, error);
+        continue;
+      }
+
+      if (typeof config !== "object" || config === null || Array.isArray(config)) {
+        showChartError(node, new Error("A chart block must contain a JSON object, for example { \"type\": \"bar\", … }."));
+        continue;
+      }
+
+      const canvas = document.createElement("canvas");
+      node.classList.remove("is-error");
+      node.replaceChildren(canvas);
+
+      try {
+        mountedCharts.push(mountChart(canvas, config as ChartConfig));
+      } catch (error) {
+        showChartError(node, error);
+      }
     }
   }, 200);
 }
@@ -985,18 +1063,23 @@ function syncViewButtons(): void {
   }
 }
 
+function handleThemeChange(): void {
+  syncThemeButtons();
+  // Diagrams and charts bake theme colours into what they render, so both need a
+  // fresh configuration and the preview needs to be rebuilt.
+  configureMermaid();
+  configureCharts();
+  renderPreview();
+}
+
 for (const button of themeButtons) {
   button.addEventListener("click", () => {
     const mode = button.dataset.themeMode;
-    if (mode === "system" || mode === "light" || mode === "dark") applyTheme(mode as ThemeMode, syncThemeButtons);
+    if (mode === "system" || mode === "light" || mode === "dark") applyTheme(mode as ThemeMode, handleThemeChange);
   });
 }
 
-initTheme(() => {
-  syncThemeButtons();
-  configureMermaid();
-  renderPreview();
-});
+initTheme(handleThemeChange);
 
 for (const button of viewButtons) {
   button.addEventListener("click", () => {
