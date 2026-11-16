@@ -1430,3 +1430,30 @@ body[data-focus-preview="true"] .preview {
     display: none;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Hidden left side (folders + notes list)
+ * ------------------------------------------------------------------ */
+
+@media (min-width: 761px) {
+  body[data-left="hidden"] .sidebar,
+  body[data-left="hidden"] .list-pane {
+    display: none;
+  }
+
+  body[data-left="hidden"] .app {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
+  }
+
+  body[data-left="hidden"][data-preview="hidden"] .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-left="hidden"] .editor-pane {
+    border-right: 1px solid var(--border);
+  }
+
+  body[data-left="hidden"][data-preview="hidden"] .editor-pane {
+    border-right: 0;
+  }
+}

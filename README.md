@@ -33,6 +33,8 @@ bun run typecheck  # tsc --noEmit
 - **Preview on your terms** — hide the preview pane when you only want to write
   (`⌘\`, remembered across reloads), or expand it into a distraction-free full-screen
   reader (`⌘⇧P`, `Esc` to exit).
+- **Layout toggles** — the folders sidebar and notes list can be hidden too (`⌘⇧\`), so the
+  editor and preview can take the whole window; each toggle's state is remembered.
 - **Live preview** rendered on every keystroke, with proportional scroll sync from the
   editor to the preview.
 - **Themes** — Auto (follows the OS via `prefers-color-scheme`), Light, Dark. The theme
@@ -80,6 +82,7 @@ bun run typecheck  # tsc --noEmit
 | `⌘B` / `Ctrl+B` | Bold |
 | `⌘I` / `Ctrl+I` | Italic |
 | `⌘\` / `Ctrl+\` | Show / hide the preview pane |
+| `⌘⇧\` / `Ctrl+Shift+\` | Show / hide the folders sidebar and notes list |
 | `⌘⇧P` / `Ctrl+Shift+P` | Full-screen preview |
 | `Tab` | Indent by two spaces |
 | `Enter` | Continue the current list (empty item exits the list) |

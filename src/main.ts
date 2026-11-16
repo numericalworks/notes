@@ -32,6 +32,7 @@ const movePopover = must<HTMLElement>("#move-popover");
 const moveFolders = must<HTMLElement>("#move-folders");
 const togglePreviewButton = must<HTMLButtonElement>("#toggle-preview");
 const focusPreviewButton = must<HTMLButtonElement>("#focus-preview");
+const toggleLeftButton = must<HTMLButtonElement>("#toggle-left");
 
 const toolbarButtons = Array.from(mdToolbar.querySelectorAll<HTMLButtonElement>("button"));
 const themeButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-theme-mode]"));
@@ -866,6 +867,46 @@ for (const button of viewButtons) {
 }
 
 /* ------------------------------------------------------------------ *
+ * Left panes (folders + notes list) visibility
+ * ------------------------------------------------------------------ */
+
+const LEFT_KEY = "notes.left";
+
+function readLeftVisible(): boolean {
+  try {
+    return localStorage.getItem(LEFT_KEY) !== "hidden";
+  } catch {
+    return true;
+  }
+}
+
+let leftVisible = readLeftVisible();
+
+function applyLeftUI(): void {
+  document.body.dataset.left = leftVisible ? "shown" : "hidden";
+  toggleLeftButton.setAttribute("aria-pressed", String(leftVisible));
+  toggleLeftButton.title = leftVisible ? "Hide sidebar (⌘⇧\\)" : "Show sidebar (⌘⇧\\)";
+  toggleLeftButton.setAttribute("aria-label", leftVisible ? "Hide sidebar" : "Show sidebar");
+}
+
+function toggleLeftPanes(): void {
+  leftVisible = !leftVisible;
+  try {
+    localStorage.setItem(LEFT_KEY, leftVisible ? "shown" : "hidden");
+  } catch {
+    // Ignore unavailable storage.
+  }
+  applyLeftUI();
+
+  if (!leftVisible) {
+    closeDrawers();
+    if (editor.offsetParent !== null) editor.focus();
+  }
+}
+
+toggleLeftButton.addEventListener("click", toggleLeftPanes);
+
+/* ------------------------------------------------------------------ *
  * Preview visibility and full-screen reading mode
  * ------------------------------------------------------------------ */
 
@@ -952,9 +993,10 @@ document.addEventListener("keydown", (event) => {
   const mod = event.metaKey || event.ctrlKey;
   const key = event.key.toLowerCase();
 
-  if (mod && key === "\\") {
+  if (mod && event.code === "Backslash") {
     event.preventDefault();
-    togglePreviewPane();
+    if (event.shiftKey) toggleLeftPanes();
+    else togglePreviewPane();
     return;
   }
 
@@ -1016,4 +1058,5 @@ const searchHint = document.querySelector<HTMLElement>(".search-field kbd");
 if (searchHint) searchHint.textContent = isMac ? "⌘K" : "Ctrl K";
 
 applyPreviewUI();
+applyLeftUI();
 renderAll();
