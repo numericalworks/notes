@@ -161,6 +161,63 @@ describe("folders", () => {
   });
 });
 
+describe("welcome note upgrades", () => {
+  const signature = "That's it. Delete this note whenever you like.";
+  const oldBody = [
+    "# Welcome to Notes",
+    "",
+    "An older demo note.",
+    "",
+    "### Shortcuts",
+    "",
+    "| Shortcut | Action |",
+    "| :-- | :-- |",
+    "| `Alt+N` | New note |",
+    "",
+    "---",
+    "",
+    signature,
+  ].join("\n");
+
+  function loadStore(body: string): NotesStore {
+    storage.setItem(
+      "notes.v1",
+      JSON.stringify({
+        version: 2,
+        folders: [{ id: "f1", name: "Notes", createdAt: 1 }],
+        notes: [{ id: "n1", folderId: "f1", body, createdAt: 1, updatedAt: 1, deletedAt: null }],
+        selectedId: "n1",
+        view: "all",
+      }),
+    );
+    return freshStore();
+  }
+
+  test("adds the charts example to an older demo note", () => {
+    const store = loadStore(oldBody);
+    const body = store.notes[0]!.body;
+
+    expect(body).toContain("### Charts");
+    expect(body).toContain("```chart");
+    expect(body).toContain('"type": "bar"');
+    expect(body.indexOf("### Charts")).toBeLessThan(body.indexOf("### Shortcuts"));
+    expect(body.endsWith(signature)).toBe(true);
+  });
+
+  test("does not touch notes the user rewrote", () => {
+    const custom = "# Welcome to Notes\n\nI replaced this with my own text.";
+    const store = loadStore(custom);
+    expect(store.notes[0]!.body).toBe(custom);
+  });
+
+  test("is idempotent", () => {
+    const once = loadStore(oldBody).notes[0]!.body;
+    const twice = loadStore(once).notes[0]!.body;
+    expect(twice).toBe(once);
+    expect(twice.match(/### Charts/g)?.length).toBe(1);
+  });
+});
+
 describe("persistence", () => {
   test("folders, notes and the current view survive a reload", () => {
     const store = freshStore();

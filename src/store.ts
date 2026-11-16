@@ -31,6 +31,30 @@ const STORAGE_KEY = "notes.v1";
 const SAVE_DELAY = 250;
 const MAX_FOLDER_NAME = 40;
 
+const CHART_DEMO = [
+  "### Charts",
+  "",
+  "Charts are [Chart.js](https://www.chartjs.org/) configs in a fenced `chart` block:",
+  "",
+  "```chart",
+  "{",
+  '  "type": "bar",',
+  '  "data": {',
+  '    "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],',
+  '    "datasets": [',
+  "      {",
+  '        "label": "Focus (hours)",',
+  '        "data": [3, 5, 2, 6, 4],',
+  '        "backgroundColor": "#f2b705",',
+  '        "borderRadius": 6',
+  "      }",
+  "    ]",
+  "  },",
+  '  "options": { "plugins": { "legend": { "display": false } } }',
+  "}",
+  "```",
+].join("\n");
+
 const SEED_BODY = [
   "# Welcome to Notes",
   "",
@@ -82,25 +106,7 @@ const SEED_BODY = [
   "  B -->|needs work| A",
   "```",
   "",
-  "### Charts",
-  "",
-  "```chart",
-  "{",
-  '  "type": "bar",',
-  '  "data": {',
-  '    "labels": ["Mon", "Tue", "Wed", "Thu", "Fri"],',
-  '    "datasets": [',
-  "      {",
-  '        "label": "Focus (hours)",',
-  '        "data": [3, 5, 2, 6, 4],',
-  '        "backgroundColor": "#f2b705",',
-  '        "borderRadius": 6',
-  "      }",
-  "    ]",
-  "  },",
-  '  "options": { "plugins": { "legend": { "display": false } } }',
-  "}",
-  "```",
+  CHART_DEMO,
   "",
   "### Shortcuts",
   "",
@@ -118,6 +124,29 @@ const SEED_BODY = [
   "",
   "That's it. Delete this note whenever you like.",
 ].join("\n");
+
+const WELCOME_SIGNATURE = "That's it. Delete this note whenever you like.";
+
+/**
+ * The welcome note doubles as a feature tour. When a demo section is added, notes that
+ * came from an earlier version get it inserted once — only for the recognisably untouched
+ * demo note, and only additively.
+ */
+function upgradeWelcomeNote(note: Note): boolean {
+  if (!note.body.startsWith("# Welcome to Notes")) return false;
+  if (!note.body.includes(WELCOME_SIGNATURE)) return false;
+  if (note.body.includes("### Charts")) return false;
+
+  const anchorText = note.body.includes("### Shortcuts") ? "### Shortcuts" : "---";
+  const index = note.body.lastIndexOf(anchorText);
+  if (index <= 0) return false;
+
+  const before = note.body.slice(0, index).replace(/\s+$/, "");
+  const after = note.body.slice(index);
+  note.body = `${before}\n\n${CHART_DEMO}\n\n${after}`;
+  note.updatedAt = Date.now();
+  return true;
+}
 
 function uid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -204,6 +233,9 @@ export class NotesStore {
       this.folders = folders;
       this.notes = notes;
 
+      let upgraded = false;
+      for (const note of this.notes) upgraded = upgradeWelcomeNote(note) || upgraded;
+
       const legacyView = data.folder === TRASH_VIEW ? TRASH_VIEW : ALL_VIEW;
       const storedView = typeof data.view === "string" ? data.view : legacyView;
       this.view = this.isValidView(storedView) ? storedView : ALL_VIEW;
@@ -212,6 +244,7 @@ export class NotesStore {
       this.selectedId =
         selected && this.notes.some((note) => note.id === selected && this.inView(note)) ? selected : null;
       this.ensureSelection();
+      if (upgraded) this.save();
     } catch {
       this.seed();
     }
