@@ -42,6 +42,8 @@ bun run typecheck  # tsc --noEmit
   reader (`⌘⇧P`, `Esc` to exit).
 - **Layout toggles** — the folders sidebar and notes list can be hidden too (`⌘⇧\`), so the
   editor and preview can take the whole window; each toggle's state is remembered.
+- **Resizable panes** — drag the divider between folders, notes, editor and preview to set
+  each width; the layout is remembered per browser and double-clicking a divider resets it.
 - **Live preview** rendered on every keystroke, with proportional scroll sync from the
   editor to the preview.
 - **Themes** — Auto (follows the OS via `prefers-color-scheme`), Light, Dark. The theme
@@ -147,6 +149,8 @@ Write a fenced block tagged `chart` containing a normal Chart.js config as JSON:
 | `Tab` | Indent by two spaces |
 | `Enter` | Continue the current list (empty item exits the list) |
 | `Esc` | Exit full-screen preview, clear search, close popovers and drawers |
+| `←` / `→` on a focused divider | Resize that pane by 16 px (`⇧` for 64 px) |
+| Double-click a divider | Reset the pane widths |
 
 ## Markdown support
 
@@ -204,6 +208,7 @@ src/
   favicon.svg  app icon, inlined by build.ts as a data URI
   styles.css   design tokens (light/dark) + all UI styles
   main.ts      editor, list, folders, preview modes, search, trash, shortcuts
+  layout.ts    resizable pane widths, clamping and persistence
   markdown.ts  dependency-free Markdown renderer with highlighting
   math.ts      AsciiMath → MathML (via the asciimath package)
   diagrams.ts  Mermaid wrapper: theme setup and async rendering

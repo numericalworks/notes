@@ -42,6 +42,11 @@
   --tok-attr: #0550ae;
 
   color-scheme: light;
+
+  /* Pane widths; updated by src/layout.ts when a divider is dragged. */
+  --sidebar-w: 236px;
+  --list-w: 306px;
+  --editor-w: 460px;
 }
 
 :root[data-theme="dark"] {
@@ -144,11 +149,11 @@ button {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 236px 306px minmax(0, 1fr) minmax(0, 1.04fr);
+  grid-template-columns: var(--sidebar-w) var(--list-w) minmax(0, var(--editor-w)) minmax(0, 1fr);
 }
 
 body[data-preview="hidden"] .app {
-  grid-template-columns: 236px 306px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-w) var(--list-w) minmax(0, 1fr);
 }
 
 body[data-preview="hidden"] .preview-pane {
@@ -164,6 +169,7 @@ body[data-preview="hidden"] .editor-pane {
  * ------------------------------------------------------------------ */
 
 .sidebar {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -577,6 +583,7 @@ body[data-focus-preview="true"] .focus-hint {
 }
 
 .list-pane {
+  position: relative;
   background: var(--bg-list);
   border-right: 1px solid var(--border);
   z-index: 15;
@@ -1244,11 +1251,11 @@ body[data-focus-preview="true"] .focus-hint {
 
 @media (max-width: 1180px) {
   .app {
-    grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1.04fr);
+    grid-template-columns: var(--list-w) minmax(0, var(--editor-w)) minmax(0, 1fr);
   }
 
   body[data-preview="hidden"] .app {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: var(--list-w) minmax(0, 1fr);
   }
 
   .sidebar {
@@ -1342,6 +1349,64 @@ body[data-focus-preview="true"] .focus-hint {
   }
 
   .editor-foot .hint {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Pane resizers
+ * ------------------------------------------------------------------ */
+
+.resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 26;
+  width: 7px;
+  transform: translateX(50%);
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.resizer::after {
+  content: "";
+  position: absolute;
+  inset: 0 2px;
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.resizer:hover::after,
+.resizer:focus-visible::after,
+.resizer.is-dragging::after {
+  background: var(--accent);
+  opacity: 0.55;
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* No resizing where panes are fixed-size or collapsed. */
+body[data-preview="hidden"] .resizer[data-resize="editor"] {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .resizer[data-resize="sidebar"] {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .resizer {
     display: none;
   }
 }
@@ -1445,7 +1510,7 @@ body[data-focus-preview="true"] .preview {
   }
 
   body[data-left="hidden"] .app {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.04fr);
+    grid-template-columns: minmax(0, var(--editor-w)) minmax(0, 1fr);
   }
 
   body[data-left="hidden"][data-preview="hidden"] .app {

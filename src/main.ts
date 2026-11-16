@@ -1,5 +1,6 @@
 import { configureCharts, mountChart, type ChartConfig } from "./charts";
 import { configureMermaid, renderDiagram } from "./diagrams";
+import { initLayout, refreshLayout } from "./layout";
 import { escapeHtml, renderMarkdown, setMathRenderer } from "./markdown";
 import { renderAsciiMath } from "./math";
 import { ALL_VIEW, NotesStore, TRASH_VIEW, type Note, type NoteFolder } from "./store";
@@ -1110,6 +1111,8 @@ function applyLeftUI(): void {
   toggleLeftButton.setAttribute("aria-pressed", String(leftVisible));
   toggleLeftButton.title = leftVisible ? "Hide sidebar (⌘⇧\\)" : "Show sidebar (⌘⇧\\)";
   toggleLeftButton.setAttribute("aria-label", leftVisible ? "Hide sidebar" : "Show sidebar");
+
+  refreshLayout();
 }
 
 function toggleLeftPanes(): void {
@@ -1165,6 +1168,8 @@ function applyPreviewUI(): void {
     "aria-label",
     fullScreenPreview ? "Exit full-screen preview" : "Full-screen preview",
   );
+
+  refreshLayout();
 }
 
 function setPreviewMode(mode: PreviewMode): void {
@@ -1282,4 +1287,5 @@ if (searchHint) searchHint.textContent = isMac ? "⌘K" : "Ctrl K";
 
 applyPreviewUI();
 applyLeftUI();
+initLayout();
 renderAll();
