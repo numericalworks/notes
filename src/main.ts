@@ -258,7 +258,9 @@ function renderList(): void {
       ? `No notes match “${query.trim()}”.`
       : store.view === TRASH_VIEW
         ? "Recently Deleted is empty."
-        : "No notes yet. Press Alt+N to create one.";
+        : store.view === ALL_VIEW
+          ? "No notes yet. Start typing to create one."
+          : "This folder is empty. Start typing to add a note.";
     fragment.appendChild(empty);
   } else {
     for (const note of notes) {
@@ -286,18 +288,22 @@ function renderEditor(): void {
   const inTrash = store.view === TRASH_VIEW;
   const hasNote = note !== null;
 
-  editor.readOnly = !hasNote || inTrash;
+  // With no note selected (for example a brand new folder), the editor doubles as a
+  // compose area: the first keystroke creates the note.
+  editor.readOnly = inTrash;
   editor.placeholder = hasNote
     ? "Start writing. Markdown is supported."
     : inTrash
       ? "No deleted notes."
-      : "Select a note, or press Alt+N to start a new one.";
+      : store.view === ALL_VIEW
+        ? "Start typing to create a note."
+        : `“${store.folderName(store.view)}” is empty — start typing to add a note.`;
 
   const body = note ? note.body : "";
   if (editor.value !== body) editor.value = body;
 
   trashBanner.hidden = !(hasNote && inTrash);
-  for (const button of toolbarButtons) button.disabled = !hasNote || inTrash;
+  for (const button of toolbarButtons) button.disabled = inTrash;
   exportNote.disabled = !hasNote;
   trashNote.disabled = !hasNote || inTrash;
   trashNote.hidden = inTrash;
@@ -325,7 +331,7 @@ function renderPreview(): void {
   const message = !note
     ? store.view === TRASH_VIEW
       ? "Recently Deleted is empty."
-      : "Select a note to preview it."
+      : "Start typing on the left and the rendered note appears here."
     : "Nothing to preview yet — start typing on the left.";
   preview.innerHTML = `<div class="pane-empty">${escapeHtml(message)}</div>`;
 }
@@ -456,15 +462,25 @@ function runFormat(action: string): void {
 }
 
 editor.addEventListener("input", () => {
-  const note = store.active();
-  if (!note || store.view === TRASH_VIEW) return;
+  if (store.view === TRASH_VIEW) return;
+
+  // Typing into the empty editor of an empty folder creates the note on the fly.
+  const composing = store.active() === null;
+  const note = composing ? store.create() : store.active();
+  if (!note) return;
 
   store.updateBody(note.id, editor.value);
-  noteStamp.textContent = `Edited ${formatFull(note.updatedAt)}`;
-  previewTitle.textContent = deriveTitle(note);
-  updateWordCount();
-  schedulePreview();
-  scheduleList();
+
+  if (composing) {
+    // First keystroke: surface the new note in the list, counts and toolbar.
+    renderAll();
+  } else {
+    noteStamp.textContent = `Edited ${formatFull(note.updatedAt)}`;
+    previewTitle.textContent = deriveTitle(note);
+    updateWordCount();
+    schedulePreview();
+    scheduleList();
+  }
 });
 
 editor.addEventListener("keydown", (event) => {
@@ -556,7 +572,7 @@ function cancelFolderEdit(): void {
   renderFolders();
 }
 
-function commitFolderEdit(input: HTMLInputElement): void {
+function commitFolderEdit(input: HTMLInputElement, focusEditor = false): void {
   const target = input.dataset.folderInput;
   const name = input.value.trim();
 
@@ -568,6 +584,7 @@ function commitFolderEdit(input: HTMLInputElement): void {
     }
     store.createFolder(name);
     renderAll();
+    if (focusEditor) editor.focus();
     return;
   }
 
@@ -629,7 +646,7 @@ folders.addEventListener("keydown", (event) => {
     cancelFolderEdit();
   } else if (event.key === "Enter") {
     event.preventDefault();
-    commitFolderEdit(input);
+    commitFolderEdit(input, true);
   }
 });
 

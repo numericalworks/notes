@@ -60,6 +60,8 @@ bun run typecheck  # tsc --noEmit
 - **All Notes** is a smart view across every folder; **Recently Deleted** is the trash.
 - New notes are created in the folder you are currently viewing (or the first folder from
   *All Notes*). Folders are flat — there is no nesting.
+- **Empty folders** — opening one gives you a blank editor. Just start typing: the note is
+  created in that folder, no button press needed.
 
 ## Keyboard shortcuts
 
