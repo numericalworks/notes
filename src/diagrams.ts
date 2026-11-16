@@ -122,18 +122,21 @@ export function configureMermaid(): void {
 }
 
 /**
- * Mermaid occasionally lays out nodes with widths far smaller than it then draws
- * them (label measurement can report a bogus size in some browsers), which leaves
- * a viewBox too small for the shapes and collapses the diagram to a sliver.
+ * Mermaid usually returns a viewBox that snugly contains the diagram, but in some
+ * browser/label setups it comes back too small, which clips edge labels ("needs work"
+ * cut in half) and the last node. This ensures the viewBox contains everything that was
+ * actually drawn.
  *
- * This expands the viewBox to the union of the drawn node shapes. It uses only
- * attribute values plus the node transforms — no layout APIs — and it can only
- * ever grow the canvas, never shrink it, so healthy diagrams are untouched.
+ * Geometry is derived from attributes and node transforms only — no layout APIs — and
+ * the canvas is only ever grown, never shrunk, so healthy diagrams are untouched.
  */
-function expandViewBoxToNodes(svg: SVGSVGElement): void {
-  const viewBox = svg.viewBox.baseVal;
-  if (!viewBox || viewBox.width <= 0 || viewBox.height <= 0) return;
+function translateOf(element: Element): { x: number; y: number } | null {
+  const match = /translate\(\s*(-?[\d.]+)(?:[\s,]+(-?[\d.]+))?/.exec(element.getAttribute("transform") ?? "");
+  if (!match) return null;
+  return { x: Number(match[1]), y: Number(match[2] ?? 0) };
+}
 
+function contentBounds(svg: SVGSVGElement): { minX: number; minY: number; maxX: number; maxY: number } | null {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
@@ -147,68 +150,116 @@ function expandViewBoxToNodes(svg: SVGSVGElement): void {
     maxY = Math.max(maxY, y);
   };
 
-  for (const node of Array.from(svg.querySelectorAll("g.node"))) {
-    const offset = /translate\(\s*(-?[\d.]+)[\s,]+(-?[\d.]+)/.exec(node.getAttribute("transform") ?? "");
-    if (!offset) continue;
-    const tx = Number(offset[1]);
-    const ty = Number(offset[2]);
+  const includeRect = (offsetX: number, offsetY: number, rect: Element): void => {
+    const x = Number(rect.getAttribute("x") ?? 0);
+    const y = Number(rect.getAttribute("y") ?? 0);
+    const width = Number(rect.getAttribute("width") ?? 0);
+    const height = Number(rect.getAttribute("height") ?? 0);
+    include(offsetX + x, offsetY + y);
+    include(offsetX + x + width, offsetY + y + height);
+  };
 
+  // Nodes.
+  for (const node of Array.from(svg.querySelectorAll("g.node"))) {
+    const offset = translateOf(node);
+    if (!offset) continue;
     const shape = node.querySelector("rect, polygon, circle, ellipse");
     if (!shape) continue;
 
     const tag = shape.tagName.toLowerCase();
     if (tag === "rect") {
-      const x = Number(shape.getAttribute("x") ?? 0);
-      const y = Number(shape.getAttribute("y") ?? 0);
-      const width = Number(shape.getAttribute("width") ?? 0);
-      const height = Number(shape.getAttribute("height") ?? 0);
-      include(tx + x, ty + y);
-      include(tx + x + width, ty + y + height);
+      includeRect(offset.x, offset.y, shape);
     } else if (tag === "polygon") {
       const points = (shape.getAttribute("points") ?? "").trim().split(/[\s,]+/).map(Number);
-      for (let i = 0; i + 1 < points.length; i += 2) include(tx + points[i]!, ty + points[i + 1]!);
-    } else if (tag === "circle") {
-      const cx = Number(shape.getAttribute("cx") ?? 0);
-      const cy = Number(shape.getAttribute("cy") ?? 0);
-      const r = Number(shape.getAttribute("r") ?? 0);
-      include(tx + cx - r, ty + cy - r);
-      include(tx + cx + r, ty + cy + r);
+      for (let i = 0; i + 1 < points.length; i += 2) include(offset.x + points[i]!, offset.y + points[i + 1]!);
     } else {
       const cx = Number(shape.getAttribute("cx") ?? 0);
       const cy = Number(shape.getAttribute("cy") ?? 0);
-      const rx = Number(shape.getAttribute("rx") ?? 0);
-      const ry = Number(shape.getAttribute("ry") ?? 0);
-      include(tx + cx - rx, ty + cy - ry);
-      include(tx + cx + rx, ty + cy + ry);
+      const rx = Number(shape.getAttribute("r") ?? shape.getAttribute("rx") ?? 0);
+      const ry = Number(shape.getAttribute("r") ?? shape.getAttribute("ry") ?? 0);
+      include(offset.x + cx - rx, offset.y + cy - ry);
+      include(offset.x + cx + rx, offset.y + cy + ry);
     }
   }
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return;
+  // Edge labels: the background rect is sized to the text, and it is what gets clipped.
+  for (const label of Array.from(svg.querySelectorAll("g.edgeLabel"))) {
+    const base = translateOf(label);
+    if (!base) continue;
 
-  const drawnWidth = maxX - minX;
-  const drawnHeight = maxY - minY;
+    for (const rect of Array.from(label.querySelectorAll("rect"))) {
+      let offsetX = base.x;
+      let offsetY = base.y;
+      for (let parent = rect.parentElement; parent && parent !== label; parent = parent.parentElement) {
+        const nested = translateOf(parent);
+        if (nested) {
+          offsetX += nested.x;
+          offsetY += nested.y;
+        }
+      }
+      includeRect(offsetX, offsetY, rect);
+    }
+  }
+
+  // Edge paths (Mermaid emits absolute M/L/Q/C coordinates).
+  for (const path of Array.from(svg.querySelectorAll("path.flowchart-link, path.relation, path.edgePath"))) {
+    const numbers = (path.getAttribute("d") ?? "").match(/-?\d+(?:\.\d+)?/g);
+    if (!numbers) continue;
+    for (let i = 0; i + 1 < numbers.length; i += 2) include(Number(numbers[i]), Number(numbers[i + 1]));
+  }
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return null;
+  return { minX, minY, maxX, maxY };
+}
+
+function ensureViewBoxContainsContent(svg: SVGSVGElement): void {
+  const viewBox = svg.viewBox.baseVal;
+  if (!viewBox || viewBox.width <= 0 || viewBox.height <= 0) return;
+
+  const bounds = contentBounds(svg);
+  if (!bounds) return;
+
+  const drawnWidth = bounds.maxX - bounds.minX;
+  const drawnHeight = bounds.maxY - bounds.minY;
   if (drawnWidth <= 0 || drawnHeight <= 0) return;
 
-  // A canvas far larger than the nodes themselves means Mermaid's label measurement
-  // ran away; log it so browser-specific problems are visible in the console.
+  // A canvas far larger than the drawing means Mermaid's label measurement ran away;
+  // log it (but never shrink, that only hid content last time).
   if (viewBox.width > drawnWidth * 3 || viewBox.height > drawnHeight * 3) {
     console.warn("[notes] Mermaid produced an oversized canvas", {
       viewBox: `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`,
-      nodeBounds: `${minX} ${minY} ${drawnWidth} ${drawnHeight}`,
+      content: `${bounds.minX} ${bounds.minY} ${drawnWidth} ${drawnHeight}`,
     });
+    return;
   }
 
-  if (drawnWidth <= viewBox.width * 1.15 && drawnHeight <= viewBox.height * 1.15) return;
+  const before = { x: viewBox.x, y: viewBox.y, width: viewBox.width, height: viewBox.height };
 
-  const pad = 8;
-  const repaired = `${minX - pad} ${minY - pad} ${drawnWidth + pad * 2} ${drawnHeight + pad * 2}`;
+  const pad = 6;
+  const overshoot = Math.max(
+    before.x - bounds.minX,
+    before.y - bounds.minY,
+    bounds.maxX - (before.x + before.width),
+    bounds.maxY - (before.y + before.height),
+  );
+  if (overshoot <= 0.5) return;
+
+  const repaired = [
+    Math.floor(bounds.minX - pad),
+    Math.floor(bounds.minY - pad),
+    Math.ceil(drawnWidth + pad * 2),
+    Math.ceil(drawnHeight + pad * 2),
+  ].join(" ");
+
   svg.setAttribute("viewBox", repaired);
 
-  // Helps diagnose browser-specific label measurement problems from the console.
-  console.warn("[notes] repaired a Mermaid viewBox that did not contain its nodes", {
-    from: `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`,
-    to: repaired,
-  });
+  // Mermaid's own padding accounts for a few pixels; a real clip is much larger.
+  if (overshoot > Math.max(16, drawnWidth * 0.05)) {
+    console.warn("[notes] expanded a Mermaid viewBox so it contains the whole diagram", {
+      from: `${before.x} ${before.y} ${before.width} ${before.height}`,
+      to: repaired,
+    });
+  }
 }
 
 /**
@@ -230,7 +281,7 @@ function normalizeSvg(markup: string): string {
   svg.removeAttribute("style");
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
-  expandViewBoxToNodes(svg);
+  ensureViewBoxContainsContent(svg);
 
   const viewBox = (svg.getAttribute("viewBox") ?? "").trim().split(/[\s,]+/).map(Number);
   const width = viewBox[2] ?? 0;
