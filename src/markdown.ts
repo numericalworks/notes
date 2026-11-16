@@ -22,6 +22,17 @@ export function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch] ?? ch);
 }
 
+/** Pluggable math renderer (installed by the app; kept out of the parser so it stays DOM-free). */
+export interface MathRenderer {
+  render(source: string, display: boolean): string | null;
+}
+
+let mathRenderer: MathRenderer | null = null;
+
+export function setMathRenderer(renderer: MathRenderer | null): void {
+  mathRenderer = renderer;
+}
+
 /* ------------------------------------------------------------------ *
  * Syntax highlighting
  * ------------------------------------------------------------------ */
@@ -303,7 +314,7 @@ export function renderInline(raw: string): string {
   let text = raw;
 
   // Backslash escapes win over every other inline rule.
-  text = text.replace(/\\([\\`*_{}[\]()#+\-.!~>|])/g, (_match, ch: string) => keep(escapeHtml(ch)));
+  text = text.replace(/\\([\\`*_{}[\]()#+\-.!~>|$])/g, (_match, ch: string) => keep(escapeHtml(ch)));
 
   // Code spans.
   text = text.replace(/(`+)([^`]|[^`][\s\S]*?[^`])\1(?!`)/g, (_match, _ticks: string, code: string) => {
@@ -338,6 +349,19 @@ export function renderInline(raw: string): string {
     const target = href.startsWith("www.") ? `https://${href}` : href;
     return `${prefix}${keep(linkHtml(target, escapeHtml(href)))}${trailing}`;
   });
+
+  // AsciiMath: $inline$ (escapes were stashed above, so \$ stays literal).
+  const math = mathRenderer;
+  if (math) {
+    text = text.replace(
+      /(?<!\$)\$(?!\$)([^\s$\n](?:[^$\n]*?[^\s$\n])?)\$(?!\d)/g,
+      (match, expression: string) => {
+        const html = math.render(expression, false);
+        // Stash the markup so it is not escaped with the surrounding text.
+        return html === null ? match : keep(html);
+      },
+    );
+  }
 
   // Everything left over is plain text.
   text = escapeHtml(text);
@@ -437,8 +461,17 @@ function startsBlock(line: string): boolean {
     HEADING_RE.test(line) ||
     HR_RE.test(line) ||
     QUOTE_RE.test(line) ||
+    /^ {0,3}\$\$/.test(line) ||
     readMarker(line) !== null
   );
+}
+
+function renderMathBlock(source: string): string {
+  const html = mathRenderer?.render(source, true) ?? null;
+  if (html) return html;
+
+  // Without a renderer (or when the expression fails to parse), show the source.
+  return `<pre class="md-code md-math-source"><code>${escapeHtml(source)}</code></pre>`;
 }
 
 function renderCodeBlock(code: string, language: string): string {
@@ -627,8 +660,52 @@ function renderBlocks(lines: string[]): string {
         i += 1;
       }
       if (i < lines.length) i += 1;
-      out.push(renderCodeBlock(body.join("\n"), language));
+
+      const code = body.join("\n");
+      const lang = language.trim().toLowerCase();
+
+      if (lang === "mermaid") {
+        out.push(
+          `<div class="md-diagram md-mermaid" data-diagram="${escapeHtml(code)}">` +
+            '<div class="md-diagram-placeholder">Mermaid diagram</div></div>',
+        );
+      } else if (lang === "asciimath" || lang === "am") {
+        out.push(renderMathBlock(code));
+      } else {
+        out.push(renderCodeBlock(code, language));
+      }
       continue;
+    }
+
+    // AsciiMath display math: $$ ... $$ (single line or fenced by $$ lines).
+    const displayMath = /^ {0,3}\$\$(.*)$/.exec(line);
+    if (displayMath && mathRenderer) {
+      const rest = displayMath[1] ?? "";
+      const trimmedRest = rest.trim();
+
+      if (trimmedRest.length > 2 && trimmedRest.endsWith("$$")) {
+        out.push(renderMathBlock(trimmedRest.slice(0, -2)));
+        i += 1;
+        continue;
+      }
+
+      let close = -1;
+      for (let j = i + 1; j < lines.length; j += 1) {
+        if (lines[j]!.includes("$$")) {
+          close = j;
+          break;
+        }
+      }
+
+      if (close !== -1) {
+        const closingLine = lines[close]!;
+        const body = [rest, ...lines.slice(i + 1, close), closingLine.slice(0, closingLine.indexOf("$$"))]
+          .join("\n")
+          .trim();
+        out.push(renderMathBlock(body));
+        i = close + 1;
+        continue;
+      }
     }
 
     const heading = HEADING_RE.exec(line);

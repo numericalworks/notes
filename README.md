@@ -30,6 +30,11 @@ bun run typecheck  # tsc --noEmit
 - **Four panes, one window** — folders sidebar, notes list, Markdown source, live preview.
 - **Folders** — create, rename, delete and move notes between them; deleting a folder
   sends its notes to Recently Deleted rather than destroying them.
+- **Math** — AsciiMath inline (`$...$`), display blocks (`$$...$$`) and fenced `asciimath`
+  blocks, rendered as native MathML — no web fonts, and the maths inherits the note's colour.
+- **Diagrams** — fenced `mermaid` blocks rendered by the bundled Mermaid (flowcharts,
+  sequence, class, state, ER, gantt, pie and the rest), themed to match and cached so
+  typing elsewhere does not re-render them.
 - **Preview on your terms** — hide the preview pane when you only want to write
   (`⌘\`, remembered across reloads), or expand it into a distraction-free full-screen
   reader (`⌘⇧P`, `Esc` to exit).
@@ -47,8 +52,8 @@ bun run typecheck  # tsc --noEmit
   browsing stays inside the folder you picked.
 - **Responsive** — at narrower widths the folders become a drawer, and on phones the
   editor and preview become Edit/Preview tabs.
-- **No runtime dependencies** — the Markdown renderer, highlighter and UI are all in
-  `src/`, so the bundle stays tiny (~64 kB).
+- **No runtime dependencies** — the Markdown renderer, highlighter, AsciiMath and Mermaid
+  are all inlined, so the built file makes no network requests at all.
 
 <p align="center">
   <img src="docs/screenshot-dark.png" alt="Dark theme" width="49%" />
@@ -73,6 +78,30 @@ bun run typecheck  # tsc --noEmit
 - **Empty folders** — opening one gives you a blank editor. Just start typing: the note is
   created in that folder, no button press needed.
 
+## Math and diagrams
+
+**AsciiMath** ([asciimath.org](https://asciimath.org/)):
+
+| Syntax | Result |
+| --- | --- |
+| `$sum_(i=1)^n i$` | inline math |
+| `$$ ... $$` | display math (one line or several) |
+| a fenced block tagged `asciimath` | display math |
+| `\$5` | a literal dollar sign |
+
+Expressions are converted to Presentation MathML, so they need no fonts or stylesheets and
+follow the text colour. Malformed expressions fall back to showing the source.
+
+**Mermaid** ([mermaid.js.org](https://mermaid.js.org/)):
+
+- Write a fenced block tagged `mermaid`.
+- Diagrams render a moment after you stop typing (200 ms) and are cached per theme, so
+  editing text elsewhere never re-renders an unchanged diagram.
+- Invalid diagrams show Mermaid's error message inline instead of breaking the preview.
+- `securityLevel: "strict"` is used, so labels are sanitised.
+
+![Math and diagrams](docs/screenshot-math.png)
+
 ## Keyboard shortcuts
 
 | Shortcut | Action |
@@ -93,7 +122,7 @@ bun run typecheck  # tsc --noEmit
 Headings (ATX and setext), bold/italic/strikethrough, inline code, fenced code blocks
 with lightweight highlighting for JS/TS, JSON, CSS, HTML, Python, shell, SQL, Go, Rust,
 Java and more, links, images, autolinks, bare URLs, blockquotes, nested ordered and
-bullet lists, task lists, tables with alignment, and horizontal rules.
+bullet lists, task lists, tables with alignment, horizontal rules, AsciiMath and Mermaid.
 
 Deliberate choices:
 
@@ -123,12 +152,26 @@ JavaScript and `src/styles.css` into the `/*__CSS__*/` and `/*__JS__*/` placehol
 `src/index.html`. Closing `</script>` sequences are escaped so the inline bundle can
 never terminate its own tag.
 
+Mermaid's official UMD build is inlined separately through the `/*__MERMAID__*/`
+placeholder, *after* the app script. Two reasons: bundling Mermaid's ESM build with Bun
+produces a bundle that hangs in Chromium, and running the app script first keeps
+ASCIIMathML's one-shot document scan from walking the 5 MB Mermaid source.
+
+Mermaid dominates the output size:
+
+| Command | Output |
+| --- | --- |
+| `bun run build` | ~5.5 MB, diagrams included |
+| `bun run build --no-mermaid` | ~107 kB, diagram blocks show an explanatory error |
+
 ```
 src/
   index.html   layout + inline theme bootstrap
   styles.css   design tokens (light/dark) + all UI styles
   main.ts      editor, list, folders, preview modes, search, trash, shortcuts
   markdown.ts  dependency-free Markdown renderer with highlighting
+  math.ts      AsciiMath → MathML (via the asciimath package)
+  diagrams.ts  Mermaid wrapper: theme setup and async rendering
   store.ts     notes + folders, ordering, migration, debounced persistence
   theme.ts     theme mode resolution and system sync
 tests/
@@ -143,5 +186,8 @@ tests/
   Snapshots from earlier versions (before folders existed) are migrated automatically into
   a default “Notes” folder.
 - No sync, accounts, or encryption — notes live unencrypted in `localStorage`.
+- Mermaid is ~5 MB of the build. `bun run build --no-mermaid` keeps the file small and
+  shows an explanatory error in place of diagrams.
+- Math is AsciiMath, not LaTeX (ASCIIMathML understands a small amount of TeX syntax).
 - Undo history is whatever the browser keeps for the textarea; toolbar actions that
   rewrite the buffer may not be undoable.

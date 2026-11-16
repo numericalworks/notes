@@ -1457,3 +1457,64 @@ body[data-focus-preview="true"] .preview {
     border-right: 0;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Math (AsciiMath → native MathML)
+ * ------------------------------------------------------------------ */
+
+.md-math {
+  font-size: 1.02em;
+}
+
+.md-math-block {
+  margin: 0 0 1.2em;
+  padding: 6px 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.md-math-source {
+  margin-bottom: 1.2em;
+}
+
+/* ------------------------------------------------------------------ *
+ * Mermaid diagrams
+ * ------------------------------------------------------------------ */
+
+.md-diagram {
+  margin: 0 0 1.2em;
+  padding: 12px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  overflow-x: auto;
+  text-align: center;
+}
+
+.md-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.md-diagram-placeholder {
+  padding: 16px 8px;
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.md-diagram-error {
+  padding: 4px 2px;
+  text-align: left;
+  font-size: 11.5px;
+  color: #ff3b30;
+}
+
+.md-diagram-error pre {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-2);
+}

@@ -2,9 +2,10 @@
 /**
  * Bundles the app into one self-contained file: dist/index.html
  *
- *   bun build.ts          # minified single file
- *   bun build.ts --dev    # unminified, easier to read
- *   bun build.ts --serve  # dev server that rebuilds on reload
+ *   bun build.ts               # minified single file
+ *   bun build.ts --dev         # unminified, easier to read
+ *   bun build.ts --no-mermaid  # skip the 5 MB Mermaid bundle (small output)
+ *   bun build.ts --serve       # dev server that rebuilds on reload
  */
 
 import { mkdirSync } from "node:fs";
@@ -13,15 +14,30 @@ const ROOT = import.meta.dir;
 const args = new Set(Bun.argv.slice(2));
 const DEV = args.has("--dev");
 const SERVE = args.has("--serve");
+const WITHOUT_MERMAID = args.has("--no-mermaid");
 const PORT = Number(process.env.PORT ?? 4173);
 const OUT_DIR = `${ROOT}/dist`;
 const OUT_FILE = `${OUT_DIR}/index.html`;
+const MERMAID_FILE = `${ROOT}/node_modules/mermaid/dist/mermaid.min.js`;
 
 function escapeClosingTag(code: string, tag: string): string {
   return code.replace(new RegExp(`</${tag}`, "gi"), `<\\/${tag}`);
 }
 
-async function bundle(): Promise<string> {
+async function mermaidBundle(): Promise<string> {
+  if (WITHOUT_MERMAID) return "";
+
+  if (!(await Bun.file(MERMAID_FILE).exists())) {
+    console.warn("! Mermaid bundle not found — run `bun install`; diagrams will report an error");
+    return "";
+  }
+
+  // The official UMD build is stable in browsers; bundling Mermaid's ESM build
+  // with Bun produces a bundle that hangs during startup.
+  return escapeClosingTag(await Bun.file(MERMAID_FILE).text(), "script");
+}
+
+async function bundle(mermaid: string): Promise<string> {
   const result = await Bun.build({
     entrypoints: [`${ROOT}/src/main.ts`],
     target: "browser",
@@ -43,19 +59,29 @@ async function bundle(): Promise<string> {
   const css = escapeClosingTag(await Bun.file(`${ROOT}/src/styles.css`).text(), "style");
   const template = await Bun.file(`${ROOT}/src/index.html`).text();
 
-  if (!template.includes("/*__CSS__*/") || !template.includes("/*__JS__*/")) {
-    throw new Error("src/index.html is missing the /*__CSS__*/ or /*__JS__*/ placeholder");
+  for (const placeholder of ["/*__CSS__*/", "/*__MERMAID__*/", "/*__JS__*/"]) {
+    if (!template.includes(placeholder)) {
+      throw new Error(`src/index.html is missing the ${placeholder} placeholder`);
+    }
   }
 
-  return template.replace("/*__CSS__*/", () => css).replace("/*__JS__*/", () => js);
+  return template
+    .replace("/*__CSS__*/", () => css)
+    .replace("/*__MERMAID__*/", () => mermaid)
+    .replace("/*__JS__*/", () => js);
 }
 
 async function buildAndWrite(): Promise<string> {
-  const html = await bundle();
+  const html = await bundle(await mermaidBundle());
   mkdirSync(OUT_DIR, { recursive: true });
   await Bun.write(OUT_FILE, html);
+
   const kilobytes = (new TextEncoder().encode(html).length / 1024).toFixed(1);
-  console.log(`dist/index.html  ${kilobytes} kB  (${DEV ? "dev" : "minified"}, self-contained)`);
+  console.log(
+    `dist/index.html  ${kilobytes} kB  (${DEV ? "dev" : "minified"}, ${
+      WITHOUT_MERMAID ? "no Mermaid" : "with Mermaid"
+    }, self-contained)`,
+  );
   return html;
 }
 

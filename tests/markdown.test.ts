@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { escapeHtml, renderInline, renderMarkdown } from "../src/markdown";
+import { escapeHtml, renderInline, renderMarkdown, setMathRenderer } from "../src/markdown";
 
 describe("block rendering", () => {
   test("headings", () => {
@@ -105,6 +105,68 @@ describe("inline rendering", () => {
 
   test("escapeHtml", () => {
     expect(escapeHtml(`<a href="x">&'`)).toBe("&lt;a href=&quot;x&quot;&gt;&amp;&#39;");
+  });
+});
+
+describe("math", () => {
+  const stub = {
+    render: (source: string, display: boolean) =>
+      display
+        ? `<div class="md-math md-math-block"><math data-display="block">${escapeHtml(source)}</math></div>`
+        : `<span class="md-math"><math data-display="inline">${escapeHtml(source)}</math></span>`,
+  };
+
+  test("inline $...$ is rendered", () => {
+    setMathRenderer(stub);
+    expect(renderInline("energy $E=mc^2$ here")).toContain('<math data-display="inline">E=mc^2</math>');
+    expect(renderInline("energy $E=mc^2$ here")).toContain("energy ");
+    setMathRenderer(null);
+  });
+
+  test("dollar amounts are not treated as math", () => {
+    setMathRenderer(stub);
+    expect(renderInline("$5 and $10")).toBe("$5 and $10");
+    expect(renderInline("costs $12")).toBe("costs $12");
+    expect(renderInline("$a\nb$")).toBe("$a<br>b$");
+    setMathRenderer(null);
+  });
+
+  test("escaped dollars stay literal", () => {
+    setMathRenderer(stub);
+    expect(renderInline("\\$x\\$ not math")).toBe("$x$ not math");
+    setMathRenderer(null);
+  });
+
+  test("display math on one line and across lines", () => {
+    setMathRenderer(stub);
+    expect(renderMarkdown("$$a+b$$")).toContain('<math data-display="block">a+b</math>');
+
+    const block = renderMarkdown("$$\nsum_(i=1)^n i\n$$");
+    expect(block).toContain('<math data-display="block">sum_(i=1)^n i</math>');
+    setMathRenderer(null);
+  });
+
+  test("fenced asciimath blocks", () => {
+    setMathRenderer(stub);
+    const html = renderMarkdown("```asciimath\nx^2 + y^2\n```");
+    expect(html).toContain('<math data-display="block">x^2 + y^2</math>');
+    expect(html).not.toContain("md-code");
+    setMathRenderer(null);
+  });
+
+  test("without a renderer the source is left alone", () => {
+    setMathRenderer(null);
+    expect(renderInline("a $x$ b")).toBe("a $x$ b");
+    expect(renderMarkdown("$$\nx\n$$")).not.toContain("md-math");
+  });
+});
+
+describe("diagrams", () => {
+  test("mermaid fences become placeholders with the source", () => {
+    const html = renderMarkdown("```mermaid\ngraph TD\n  A-->B\n```");
+    expect(html).toContain('class="md-diagram md-mermaid"');
+    expect(html).toContain('data-diagram="graph TD\n  A--&gt;B"');
+    expect(html).not.toContain("md-code");
   });
 });
 

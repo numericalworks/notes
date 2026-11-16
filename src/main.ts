@@ -1,6 +1,8 @@
-import { escapeHtml, renderMarkdown } from "./markdown";
+import { configureMermaid, renderDiagram } from "./diagrams";
+import { escapeHtml, renderMarkdown, setMathRenderer } from "./markdown";
+import { renderAsciiMath } from "./math";
 import { ALL_VIEW, NotesStore, TRASH_VIEW, type Note, type NoteFolder } from "./store";
-import { applyTheme, currentThemeMode, initTheme, type ThemeMode } from "./theme";
+import { applyTheme, currentThemeMode, initTheme, resolvedTheme, type ThemeMode } from "./theme";
 
 /* ------------------------------------------------------------------ *
  * DOM
@@ -40,6 +42,10 @@ const viewButtons = Array.from(document.querySelectorAll<HTMLButtonElement>("[da
 
 const store = new NotesStore();
 let query = "";
+
+// AsciiMath runs through the DOM (MathML), so it is installed at boot rather
+// than imported by the DOM-free Markdown parser.
+setMathRenderer({ render: renderAsciiMath });
 
 let editingFolderId: string | null = null;
 let creatingFolder = false;
@@ -324,11 +330,13 @@ function renderEditor(): void {
 }
 
 function renderPreview(): void {
+  previewGeneration += 1;
   const note = store.active();
   const html = note ? renderMarkdown(note.body) : "";
 
   if (html) {
     preview.innerHTML = html;
+    renderDiagrams();
     return;
   }
 
@@ -347,6 +355,79 @@ function renderAll(): void {
   renderList();
   renderEditor();
   renderPreview();
+}
+
+/* ------------------------------------------------------------------ *
+ * Mermaid diagrams
+ * ------------------------------------------------------------------ */
+
+let previewGeneration = 0;
+
+const diagramCache = new Map<string, string>();
+const DIAGRAM_CACHE_LIMIT = 32;
+let diagramTimer: ReturnType<typeof setTimeout> | null = null;
+
+function diagramKey(source: string): string {
+  return `${resolvedTheme()}\u0000${source}`;
+}
+
+function cacheDiagram(key: string, svg: string): void {
+  diagramCache.set(key, svg);
+  while (diagramCache.size > DIAGRAM_CACHE_LIMIT) {
+    const oldest = diagramCache.keys().next().value;
+    if (oldest === undefined) break;
+    diagramCache.delete(oldest);
+  }
+}
+
+function renderDiagrams(): void {
+  const nodes = Array.from(preview.querySelectorAll<HTMLElement>(".md-mermaid[data-diagram]"));
+  if (nodes.length === 0) return;
+
+  const generation = previewGeneration;
+  const pending: HTMLElement[] = [];
+
+  // Cached SVGs are injected synchronously, so editing elsewhere never flashes.
+  for (const node of nodes) {
+    const cached = diagramCache.get(diagramKey(node.dataset.diagram ?? ""));
+    if (cached) {
+      node.innerHTML = cached;
+      node.classList.add("is-ready");
+    } else {
+      node.classList.remove("is-ready", "is-error");
+      pending.push(node);
+    }
+  }
+
+  if (pending.length === 0) return;
+
+  if (diagramTimer !== null) clearTimeout(diagramTimer);
+  diagramTimer = setTimeout(() => {
+    diagramTimer = null;
+    if (generation !== previewGeneration) return;
+
+    for (const node of pending) {
+      if (!node.isConnected) continue;
+      const source = node.dataset.diagram ?? "";
+      const key = diagramKey(source);
+
+      renderDiagram(source)
+        .then((svg) => {
+          cacheDiagram(key, svg);
+          if (generation === previewGeneration && node.isConnected) {
+            node.innerHTML = svg;
+            node.classList.add("is-ready");
+          }
+        })
+        .catch((error: unknown) => {
+          if (generation !== previewGeneration || !node.isConnected) return;
+          node.classList.add("is-error");
+          node.innerHTML =
+            '<div class="md-diagram-error"><strong>Could not render this diagram</strong>' +
+            `<pre>${escapeHtml(error instanceof Error ? error.message : String(error))}</pre></div>`;
+        });
+    }
+  }, 200);
 }
 
 /* ------------------------------------------------------------------ *
@@ -856,7 +937,11 @@ for (const button of themeButtons) {
   });
 }
 
-initTheme(() => syncThemeButtons());
+initTheme(() => {
+  syncThemeButtons();
+  configureMermaid();
+  renderPreview();
+});
 
 for (const button of viewButtons) {
   button.addEventListener("click", () => {
