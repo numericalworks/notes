@@ -15,7 +15,7 @@ import { resolvedTheme } from "./theme";
 
 interface MermaidAPI {
   initialize(config: Record<string, unknown>): void;
-  render(id: string, text: string): Promise<{ svg: string }>;
+  render(id: string, text: string, container?: Element): Promise<{ svg: string }>;
 }
 
 const FONT_FAMILY =
@@ -34,6 +34,17 @@ const FONT_SIZE = "15px";
  * sparse. `minNodeWidth`/`wrappingWidth` let nodes hug their labels.
  */
 const DIAGRAM_CONFIG: Record<string, unknown> = {
+  /** The classic renderer is the one used by GitHub et al. and is far better tested than Mermaid 12's new "neo" look. */
+  look: "classic",
+  /**
+   * Top-level on purpose: `getEffectiveHtmlLabels` reads `config.htmlLabels` first and
+   * only falls back to the (deprecated) `flowchart.htmlLabels`. With HTML labels,
+   * Mermaid sizes nodes by measuring an HTML node inside a <foreignObject>, which in
+   * some browser/font setups reports absurd dimensions — a three-node chart then gets
+   * laid out with 2500 px between ranks. SVG <text> labels are measured with getBBox
+   * and are stable everywhere.
+   */
+  htmlLabels: false,
   flowchart: {
     useMaxWidth: false,
     minNodeWidth: 40,
@@ -68,6 +79,24 @@ const DIAGRAM_CONFIG: Record<string, unknown> = {
 
 let configuredTheme: "light" | "dark" | null = null;
 let sequence = 0;
+let measureHost: HTMLDivElement | null = null;
+
+/**
+ * Mermaid measures labels by appending a temporary <svg> to the document. Point it at
+ * a dedicated off-screen container with plain styles instead of <body>, so the app's
+ * CSS (font size, overflow, layout) cannot influence diagram geometry.
+ */
+function measurementHost(): HTMLDivElement {
+  if (measureHost?.isConnected) return measureHost;
+
+  const host = document.createElement("div");
+  host.setAttribute("aria-hidden", "true");
+  host.style.cssText =
+    "position:fixed;top:0;left:-12000px;width:1000px;height:0;overflow:visible;pointer-events:none;contain:layout style;";
+  document.body.appendChild(host);
+  measureHost = host;
+  return host;
+}
 
 function mermaidGlobal(): MermaidAPI | null {
   const api = (globalThis as unknown as { mermaid?: MermaidAPI }).mermaid;
@@ -159,6 +188,16 @@ function expandViewBoxToNodes(svg: SVGSVGElement): void {
   const drawnWidth = maxX - minX;
   const drawnHeight = maxY - minY;
   if (drawnWidth <= 0 || drawnHeight <= 0) return;
+
+  // A canvas far larger than the nodes themselves means Mermaid's label measurement
+  // ran away; log it so browser-specific problems are visible in the console.
+  if (viewBox.width > drawnWidth * 3 || viewBox.height > drawnHeight * 3) {
+    console.warn("[notes] Mermaid produced an oversized canvas", {
+      viewBox: `${viewBox.x} ${viewBox.y} ${viewBox.width} ${viewBox.height}`,
+      nodeBounds: `${minX} ${minY} ${drawnWidth} ${drawnHeight}`,
+    });
+  }
+
   if (drawnWidth <= viewBox.width * 1.15 && drawnHeight <= viewBox.height * 1.15) return;
 
   const pad = 8;
@@ -215,7 +254,7 @@ export async function renderDiagram(source: string): Promise<string> {
 
   configureMermaid();
   sequence += 1;
-  const { svg } = await api.render(`md-diagram-${sequence}`, source);
+  const { svg } = await api.render(`md-diagram-${sequence}`, source, measurementHost());
   return normalizeSvg(svg);
 }
 

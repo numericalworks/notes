@@ -380,6 +380,59 @@ function cacheDiagram(key: string, svg: string): void {
   }
 }
 
+/**
+ * Exposes what the browser actually produced for the most recent diagram, so a
+ * degenerate render can be reported with one line: `__notesLastDiagram`.
+ */
+function reportDiagram(node: HTMLElement): void {
+  const svg = node.querySelector<SVGSVGElement>("svg");
+  if (!svg) return;
+
+  const box = svg.getBoundingClientRect();
+  const nodes = Array.from(svg.querySelectorAll("g.node"));
+  const edges = Array.from(svg.querySelectorAll("g.edgeLabel text"));
+
+  const report = {
+    build: document.querySelector('meta[name="notes-build"]')?.getAttribute("content") ?? null,
+    userAgent: navigator.userAgent,
+    devicePixelRatio: window.devicePixelRatio,
+    viewportScale: window.visualViewport?.scale ?? null,
+    viewBox: svg.getAttribute("viewBox"),
+    rendered: `${Math.round(box.width)}x${Math.round(box.height)}`,
+    paneWidth: node.clientWidth,
+    bodyFontSize: getComputedStyle(document.body).fontSize,
+    nodes: nodes.map((group) => ({
+      at: group.getAttribute("transform"),
+      shape: (() => {
+        const shape = group.querySelector("rect, polygon, circle, ellipse");
+        return shape
+          ? `${shape.getAttribute("width") ?? shape.getAttribute("r") ?? "?"}x${shape.getAttribute("height") ?? "?"}`
+          : null;
+      })(),
+    })),
+    edgeLabels: edges.map((text) => {
+      const label = text.getBoundingClientRect();
+      return {
+        text: text.textContent?.trim() ?? "",
+        drawn: `${Math.round(label.width)}x${Math.round(label.height)}`,
+        fontSize: getComputedStyle(text).fontSize,
+      };
+    }),
+  };
+
+  (window as unknown as { __notesLastDiagram?: unknown }).__notesLastDiagram = report;
+
+  // Surface pathological layouts in the console with their measurements attached.
+  const viewBox = svg.viewBox.baseVal;
+  const nodeHeightSum = nodes.reduce((sum, group) => {
+    const shape = group.querySelector("rect, polygon, circle, ellipse");
+    return sum + Number(shape?.getAttribute("height") ?? 0);
+  }, 0);
+  if (viewBox && nodeHeightSum > 0 && viewBox.height > nodeHeightSum * 6) {
+    console.warn("[notes] degenerate Mermaid layout", report);
+  }
+}
+
 function renderDiagrams(): void {
   const nodes = Array.from(preview.querySelectorAll<HTMLElement>(".md-mermaid[data-diagram]"));
   if (nodes.length === 0) return;
@@ -393,6 +446,7 @@ function renderDiagrams(): void {
     if (cached) {
       node.innerHTML = cached;
       node.classList.add("is-ready");
+      reportDiagram(node);
     } else {
       node.classList.remove("is-ready", "is-error");
       pending.push(node);
@@ -417,6 +471,7 @@ function renderDiagrams(): void {
           if (generation === previewGeneration && node.isConnected) {
             node.innerHTML = svg;
             node.classList.add("is-ready");
+            reportDiagram(node);
           }
         })
         .catch((error: unknown) => {

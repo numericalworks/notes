@@ -95,6 +95,9 @@ follow the text colour. Malformed expressions fall back to showing the source.
 **Mermaid** ([mermaid.js.org](https://mermaid.js.org/)):
 
 - Write a fenced block tagged `mermaid`.
+- Uses Mermaid's **classic** renderer (Mermaid 12's default “neo” look is newer and less
+  consistent across browsers) and measures labels in an isolated off-screen container, so
+  the app's CSS cannot influence diagram geometry.
 - Diagrams keep their natural size and are only scaled down when they do not fit the
   pane; flowchart nodes hug their labels (Mermaid's default 120 px minimum node width made
   small charts unnecessarily massive).
