@@ -237,3 +237,7 @@ tests/
 - Math is AsciiMath, not LaTeX (ASCIIMathML understands a small amount of TeX syntax).
 - Undo history is whatever the browser keeps for the textarea; toolbar actions that
   rewrite the buffer may not be undoable.
+
+## Donate
+
+<https://paypal.me/mindaslab>
