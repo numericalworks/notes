@@ -4,7 +4,7 @@
  *
  *   bun build.ts               # minified single file
  *   bun build.ts --dev         # unminified, easier to read
- *   bun build.ts --no-mermaid  # skip the 5 MB Mermaid bundle (small output)
+ *   bun build.ts --no-mermaid  # skip the Mermaid bundle (small output)
  *   bun build.ts --serve       # dev server that rebuilds on reload
  */
 
@@ -36,7 +36,12 @@ async function mermaidBundle(): Promise<string> {
 
   // The official UMD build is stable in browsers; bundling Mermaid's ESM build
   // with Bun produces a bundle that hangs during startup.
-  return escapeClosingTag(await Bun.file(MERMAID_FILE).text(), "script");
+  //
+  // Mermaid is by far the largest asset (~5.3 MB minified). Storing it gzip+
+  // base64 instead of as raw JavaScript shrinks the single-file build to about
+  // 2.4 MB; `src/diagrams.ts` inflates and starts it on the first diagram.
+  const source = new TextEncoder().encode(await Bun.file(MERMAID_FILE).text());
+  return Buffer.from(Bun.gzipSync(source, { level: 9 })).toString("base64");
 }
 
 async function chartJsBundle(): Promise<string> {

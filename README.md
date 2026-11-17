@@ -189,18 +189,18 @@ JavaScript and `src/styles.css` into the `/*__CSS__*/` and `/*__JS__*/` placehol
 never requests a separate icon file. Closing `</script>` sequences are escaped so the
 inline bundle can never terminate its own tag.
 
-Mermaid's official UMD build is inlined separately through the `/*__MERMAID__*/`
-placeholder, and Chart.js's through `/*__CHARTJS__*/` — both *after* the app script. Two
-reasons: bundling Mermaid's ESM build with Bun produces a bundle that hangs in Chromium,
-and running the app script first keeps ASCIIMathML's one-shot document scan from walking
-those megabytes of vendor source.
-
-Mermaid dominates the output size:
+Mermaid's official UMD build (bundling its ESM build with Bun produces a bundle that
+hangs in Chromium) and Chart.js's are substituted through `/*__MERMAID__*/` and
+`/*__CHARTJS__*/` after the app script. Chart.js is inlined as JavaScript; Mermaid is
+much larger, so `build.ts` gzip-compresses it and stores the base64 payload in a
+`<script type="application/gzip;base64">` block. `diagrams.ts` inflates and starts it on
+the first Mermaid diagram (preloading while the preview debounce runs), so the app boots
+without parsing vendor code it may never use.
 
 | Command | Output |
 | --- | --- |
-| `bun run build` | ~5.7 MB, diagrams + charts included |
-| `bun run build --no-mermaid` | ~322 kB, diagram blocks show an explanatory error |
+| `bun run build` | ~2.4 MB, diagrams + charts included |
+| `bun run build --no-mermaid` | ~329 kB, diagram blocks show an explanatory error |
 
 ```
 src/
@@ -211,7 +211,7 @@ src/
   layout.ts    resizable pane widths, clamping and persistence
   markdown.ts  dependency-free Markdown renderer with highlighting
   math.ts      AsciiMath → MathML (via the asciimath package)
-  diagrams.ts  Mermaid wrapper: theme setup and async rendering
+  diagrams.ts  Mermaid wrapper: lazy bundle inflation, theme setup, async rendering
   charts.ts    Chart.js wrapper: theme defaults and mounting
   store.ts     notes + folders, ordering, migration, debounced persistence
   theme.ts     theme mode resolution and system sync
@@ -227,8 +227,10 @@ tests/
   Snapshots from earlier versions (before folders existed) are migrated automatically into
   a default “Notes” folder.
 - No sync, accounts, or encryption — notes live unencrypted in `localStorage`.
-- Mermaid is ~5 MB of the build. `bun run build --no-mermaid` keeps the file small and
-  shows an explanatory error in place of diagrams.
+- Mermaid is ~2.2 MB of the build (gzip+base64; ~5.3 MB once inflated) and is inflated
+  on the first diagram, which needs `DecompressionStream` (Chrome 80+, Firefox 113+,
+  Safari 16.4+). `bun run build --no-mermaid` keeps the file small and shows an
+  explanatory error in place of diagrams.
 - Chart blocks are JSON, so configs cannot contain JS callbacks or formatters; charts are
   a fixed 320 px tall and re-created when the preview re-renders.
 - Math is AsciiMath, not LaTeX (ASCIIMathML understands a small amount of TeX syntax).

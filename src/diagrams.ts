@@ -1,14 +1,17 @@
 /**
  * Mermaid diagram rendering.
  *
- * Mermaid ships as a ~5 MB UMD bundle that `build.ts` inlines before the app
- * script (bundling the ESM build with Bun produces a bundle that hangs in
- * Chromium, while the official UMD build is stable). Mermaid therefore arrives
- * as `window.mermaid`; this module is a thin, typed wrapper around it.
+ * Mermaid ships as a ~5.3 MB UMD bundle that would otherwise dominate the
+ * single-file build. `build.ts` stores it gzip-compressed as base64 in a
+ * `<script id="mermaid-bundle">` tag; this module inflates that tag and starts
+ * the script the first time a diagram is rendered. The official UMD build is
+ * used because bundling Mermaid's ESM build with Bun produces a bundle that
+ * hangs in Chromium.
  *
- * Diagrams are rendered asynchronously after the Markdown preview is painted,
- * then cached by source + theme so typing elsewhere in a note does not
- * re-render unchanged diagrams.
+ * Once started, Mermaid assigns `window.mermaid`; this module is a thin, typed
+ * wrapper around it. Diagrams are rendered asynchronously after the Markdown
+ * preview is painted, then cached by source + theme so typing elsewhere in a
+ * note does not re-render unchanged diagrams.
  */
 
 import { resolvedTheme, UI_FONT_FAMILY } from "./theme";
@@ -100,6 +103,83 @@ function measurementHost(): HTMLDivElement {
 function mermaidGlobal(): MermaidAPI | null {
   const api = (globalThis as unknown as { mermaid?: MermaidAPI }).mermaid;
   return api && typeof api.render === "function" ? api : null;
+}
+
+const BUNDLE_SCRIPT_ID = "mermaid-bundle";
+
+let loading: Promise<MermaidAPI | null> | null = null;
+
+/** The base64 payload, or `null` in a `--no-mermaid` build. */
+function encodedBundle(): string | null {
+  const script = document.getElementById(BUNDLE_SCRIPT_ID);
+  if (!(script instanceof HTMLScriptElement)) return null;
+  const base64 = script.textContent?.replace(/\s+/g, "") ?? "";
+  return base64.length > 0 ? base64 : null;
+}
+
+async function decompressBundle(base64: string): Promise<string> {
+  if (typeof DecompressionStream !== "function") {
+    throw new Error("This browser cannot decompress the bundled Mermaid (DecompressionStream is unavailable).");
+  }
+
+  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+
+/**
+ * A blob URL keeps normal `<script>` semantics (the UMD build assigns
+ * `globalThis.mermaid`) without resorting to `eval`.
+ */
+async function startBundle(code: string): Promise<void> {
+  const url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = url;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Could not start the bundled Mermaid script"));
+      document.head.appendChild(script);
+    });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function loadBundledMermaid(): Promise<MermaidAPI | null> {
+  const base64 = encodedBundle();
+  if (!base64) return null;
+
+  await startBundle(await decompressBundle(base64));
+  return mermaidGlobal();
+}
+
+/**
+ * Resolves with Mermaid, inflating and starting the bundled copy on demand.
+ * Returns `null` when the build omitted Mermaid entirely.
+ */
+function ensureMermaid(): Promise<MermaidAPI | null> {
+  const loaded = mermaidGlobal();
+  if (loaded) return Promise.resolve(loaded);
+  if (!encodedBundle()) return Promise.resolve(null);
+
+  loading ??= loadBundledMermaid()
+    .then((api) => {
+      configureMermaid();
+      return api;
+    })
+    .catch((error: unknown) => {
+      loading = null;
+      throw error;
+    });
+  return loading;
+}
+
+/** Starts inflating the bundle while the preview debounce runs. */
+export function preloadMermaid(): void {
+  ensureMermaid().catch(() => {
+    // The render path reports the failure in the diagram block itself.
+  });
 }
 
 export function configureMermaid(): void {
@@ -299,7 +379,7 @@ function normalizeSvg(markup: string): string {
 }
 
 export async function renderDiagram(source: string): Promise<string> {
-  const api = mermaidGlobal();
+  const api = await ensureMermaid();
   if (!api) throw new Error("Mermaid is not available in this build (built with --no-mermaid).");
 
   configureMermaid();
@@ -308,8 +388,7 @@ export async function renderDiagram(source: string): Promise<string> {
   return normalizeSvg(svg);
 }
 
-// Disable Mermaid's own "run on load" pass before DOMContentLoaded fires. The
-// Mermaid bundle is inlined after this script, so the global may not exist yet;
-// initialize again once the document finishes parsing.
+// If a host page supplies its own `window.mermaid`, configure it immediately and
+// again after parsing. The bundled copy is configured when it finishes loading.
 configureMermaid();
 document.addEventListener("DOMContentLoaded", () => configureMermaid());

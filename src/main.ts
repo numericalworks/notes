@@ -1,5 +1,5 @@
 import { configureCharts, mountChart, type ChartConfig } from "./charts";
-import { configureMermaid, renderDiagram } from "./diagrams";
+import { configureMermaid, preloadMermaid, renderDiagram } from "./diagrams";
 import { initLayout, refreshLayout } from "./layout";
 import { escapeHtml, renderMarkdown, setMathRenderer } from "./markdown";
 import { renderAsciiMath } from "./math";
@@ -458,6 +458,9 @@ function renderDiagrams(): void {
   }
 
   if (pending.length === 0) return;
+
+  // Inflating the bundled Mermaid takes a moment; start it while the debounce runs.
+  preloadMermaid();
 
   if (diagramTimer !== null) clearTimeout(diagramTimer);
   diagramTimer = setTimeout(() => {
