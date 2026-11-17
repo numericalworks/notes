@@ -26,30 +26,31 @@ function escapeClosingTag(code: string, tag: string): string {
   return code.replace(new RegExp(`</${tag}`, "gi"), `<\\/${tag}`);
 }
 
-async function mermaidBundle(): Promise<string> {
-  if (WITHOUT_MERMAID) return "";
-
-  if (!(await Bun.file(MERMAID_FILE).exists())) {
-    console.warn("! Mermaid bundle not found — run `bun install`; diagrams will report an error");
+/**
+ * Large vendor bundles are stored gzip+base64 in an inert script tag instead of
+ * as raw JavaScript. `src/assets.ts` inflates and starts them on first use, so the
+ * single-file build stays much smaller and startup does not parse unused code.
+ */
+async function compressedBundle(file: string, label: string): Promise<string> {
+  if (!(await Bun.file(file).exists())) {
+    console.warn(`! ${label} bundle not found — run \`bun install\`; matching blocks will report an error`);
     return "";
   }
 
-  // The official UMD build is stable in browsers; bundling Mermaid's ESM build
-  // with Bun produces a bundle that hangs during startup.
-  //
-  // Mermaid is by far the largest asset (~5.3 MB minified). Storing it gzip+
-  // base64 instead of as raw JavaScript shrinks the single-file build to about
-  // 2.4 MB; `src/diagrams.ts` inflates and starts it on the first diagram.
-  const source = new TextEncoder().encode(await Bun.file(MERMAID_FILE).text());
+  const source = new TextEncoder().encode(await Bun.file(file).text());
   return Buffer.from(Bun.gzipSync(source, { level: 9 })).toString("base64");
 }
 
+async function mermaidBundle(): Promise<string> {
+  if (WITHOUT_MERMAID) return "";
+
+  // The official UMD build is stable in browsers; bundling Mermaid's ESM build
+  // with Bun produces a bundle that hangs during startup.
+  return compressedBundle(MERMAID_FILE, "Mermaid");
+}
+
 async function chartJsBundle(): Promise<string> {
-  if (!(await Bun.file(CHARTJS_FILE).exists())) {
-    console.warn("! Chart.js bundle not found — run `bun install`; chart blocks will report an error");
-    return "";
-  }
-  return escapeClosingTag(await Bun.file(CHARTJS_FILE).text(), "script");
+  return compressedBundle(CHARTJS_FILE, "Chart.js");
 }
 
 async function bundle(mermaid: string, chartjs: string): Promise<string> {

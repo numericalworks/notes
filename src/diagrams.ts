@@ -14,6 +14,7 @@
  * note does not re-render unchanged diagrams.
  */
 
+import { loadInlineBundle } from "./assets";
 import { resolvedTheme, UI_FONT_FAMILY } from "./theme";
 
 interface MermaidAPI {
@@ -109,51 +110,6 @@ const BUNDLE_SCRIPT_ID = "mermaid-bundle";
 
 let loading: Promise<MermaidAPI | null> | null = null;
 
-/** The base64 payload, or `null` in a `--no-mermaid` build. */
-function encodedBundle(): string | null {
-  const script = document.getElementById(BUNDLE_SCRIPT_ID);
-  if (!(script instanceof HTMLScriptElement)) return null;
-  const base64 = script.textContent?.replace(/\s+/g, "") ?? "";
-  return base64.length > 0 ? base64 : null;
-}
-
-async function decompressBundle(base64: string): Promise<string> {
-  if (typeof DecompressionStream !== "function") {
-    throw new Error("This browser cannot decompress the bundled Mermaid (DecompressionStream is unavailable).");
-  }
-
-  const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
-  return new Response(stream).text();
-}
-
-/**
- * A blob URL keeps normal `<script>` semantics (the UMD build assigns
- * `globalThis.mermaid`) without resorting to `eval`.
- */
-async function startBundle(code: string): Promise<void> {
-  const url = URL.createObjectURL(new Blob([code], { type: "text/javascript" }));
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = url;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Could not start the bundled Mermaid script"));
-      document.head.appendChild(script);
-    });
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-async function loadBundledMermaid(): Promise<MermaidAPI | null> {
-  const base64 = encodedBundle();
-  if (!base64) return null;
-
-  await startBundle(await decompressBundle(base64));
-  return mermaidGlobal();
-}
-
 /**
  * Resolves with Mermaid, inflating and starting the bundled copy on demand.
  * Returns `null` when the build omitted Mermaid entirely.
@@ -161,12 +117,11 @@ async function loadBundledMermaid(): Promise<MermaidAPI | null> {
 function ensureMermaid(): Promise<MermaidAPI | null> {
   const loaded = mermaidGlobal();
   if (loaded) return Promise.resolve(loaded);
-  if (!encodedBundle()) return Promise.resolve(null);
 
-  loading ??= loadBundledMermaid()
-    .then((api) => {
+  loading ??= loadInlineBundle(BUNDLE_SCRIPT_ID)
+    .then(() => {
       configureMermaid();
-      return api;
+      return mermaidGlobal();
     })
     .catch((error: unknown) => {
       loading = null;

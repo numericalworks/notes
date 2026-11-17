@@ -1,12 +1,13 @@
 /**
  * Chart.js rendering.
  *
- * Like Mermaid, Chart.js is inlined as its official UMD bundle by `build.ts`, so it
- * arrives as `window.Chart`. Blocks tagged `chart` contain a JSON Chart.js config;
- * this module parses nothing — it applies the app's theme defaults and mounts the
- * chart on a canvas supplied by the preview.
+ * Like Mermaid, Chart.js is embedded by `build.ts` as a gzip+base64 payload and
+ * inflated on first use, so it arrives as `window.Chart`. Blocks tagged `chart`
+ * contain a JSON Chart.js config; this module parses nothing — it applies the
+ * app's theme defaults and mounts the chart on a canvas supplied by the preview.
  */
 
+import { loadInlineBundle } from "./assets";
 import { resolvedTheme, UI_FONT_FAMILY } from "./theme";
 
 interface ChartInstance {
@@ -29,11 +30,41 @@ export interface ChartConfig {
   plugins?: unknown;
 }
 
+const BUNDLE_SCRIPT_ID = "chartjs-bundle";
+
 let configuredTheme: "light" | "dark" | null = null;
+let loading: Promise<ChartGlobal | null> | null = null;
 
 function chartGlobal(): ChartGlobal | null {
   const api = (globalThis as unknown as { Chart?: ChartGlobal }).Chart;
   return typeof api === "function" ? api : null;
+}
+
+/**
+ * Resolves with Chart.js, inflating and starting the bundled copy on demand.
+ * Returns `null` when the bundle was not included.
+ */
+function ensureCharts(): Promise<ChartGlobal | null> {
+  const loaded = chartGlobal();
+  if (loaded) return Promise.resolve(loaded);
+
+  loading ??= loadInlineBundle(BUNDLE_SCRIPT_ID)
+    .then(() => {
+      configureCharts();
+      return chartGlobal();
+    })
+    .catch((error: unknown) => {
+      loading = null;
+      throw error;
+    });
+  return loading;
+}
+
+/** Starts inflating the bundle while the preview debounce runs. */
+export function preloadCharts(): void {
+  ensureCharts().catch(() => {
+    // The render path reports the failure in the chart block itself.
+  });
 }
 
 export function configureCharts(): void {
@@ -50,8 +81,8 @@ export function configureCharts(): void {
   api.defaults.font.size = 12;
 }
 
-export function mountChart(canvas: HTMLCanvasElement, config: ChartConfig): ChartInstance {
-  const api = chartGlobal();
+export async function mountChart(canvas: HTMLCanvasElement, config: ChartConfig): Promise<ChartInstance> {
+  const api = await ensureCharts();
   if (!api) throw new Error("Chart.js is not available in this build.");
 
   configureCharts();

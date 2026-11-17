@@ -1,4 +1,4 @@
-import { configureCharts, mountChart, type ChartConfig } from "./charts";
+import { configureCharts, mountChart, preloadCharts, type ChartConfig } from "./charts";
 import { configureMermaid, preloadMermaid, renderDiagram } from "./diagrams";
 import { initLayout, refreshLayout } from "./layout";
 import { escapeHtml, renderMarkdown, setMathRenderer } from "./markdown";
@@ -527,6 +527,9 @@ function renderCharts(): void {
 
   const generation = previewGeneration;
 
+  // Inflating the bundled Chart.js takes a moment; start it while the debounce runs.
+  preloadCharts();
+
   for (const node of nodes) {
     if (!node.querySelector(".md-chart-placeholder, .md-chart-error")) {
       node.innerHTML = '<div class="md-chart-placeholder">Rendering chart…</div>';
@@ -534,7 +537,7 @@ function renderCharts(): void {
   }
 
   if (chartTimer !== null) clearTimeout(chartTimer);
-  chartTimer = setTimeout(() => {
+  chartTimer = setTimeout(async () => {
     chartTimer = null;
     if (generation !== previewGeneration) return;
 
@@ -559,7 +562,13 @@ function renderCharts(): void {
       node.replaceChildren(canvas);
 
       try {
-        mountedCharts.push(mountChart(canvas, config as ChartConfig));
+        const chart = await mountChart(canvas, config as ChartConfig);
+        // The preview may have been rebuilt while Chart.js was inflating.
+        if (generation !== previewGeneration || !node.isConnected) {
+          chart.destroy();
+          continue;
+        }
+        mountedCharts.push(chart);
       } catch (error) {
         showChartError(node, error);
       }
